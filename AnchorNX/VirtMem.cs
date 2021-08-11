@@ -11,8 +11,6 @@ namespace AnchorNX {
 		public static ulong Translate(ulong addr, Vcpu cpu) {
 			if((cpu[SysReg.SCTLR_EL1] & 1) == 0) return addr;
 			
-			var el = (cpu.CPSR & 0b1111) == 0 ? 0 : 1;
-
 			var tcr = cpu[SysReg.TCR_EL1];
 			if(tcr != CurTCR) {
 				CurTCR = tcr;
@@ -40,7 +38,6 @@ namespace AnchorNX {
 			}
 
 			var isTop = (addr & T1TopMask) == T1TopMask;
-			Console.WriteLine($"Foo? {addr:X} -- {isTop}");
 			
 			var pt = cpu[isTop ? SysReg.TTBR1_EL1 : SysReg.TTBR0_EL1];
 			var size = isTop ? T1Size : T0Size;
@@ -58,7 +55,6 @@ namespace AnchorNX {
 				var pte = PhysMem.GetSpan<ulong>(pt + (ulong) (index * 8))[0];
 				if((pte & 1) == 0)
 					throw new Exception($"Invalid PTE! Address 0x{addr:X} -- {index} -- L{level}");
-				Console.WriteLine($"PTE: {pte:X}  L{level}");
 
 				switch(pte & 3) {
 					case 0b11 when level == 0: // Table descriptor
@@ -67,17 +63,14 @@ namespace AnchorNX {
 						throw new NotImplementedException();
 					case 0b11: // Table entry
 						pt = ((pte & 0x0000_FFFF_FFFF_FFFFUL) >> pageBits) << pageBits;
-						Console.WriteLine($"Next table at 0x{pt:X}");
 						break;
 					default:
 						throw new Exception($"Unknown PTE type {pte & 3}");
 				}
 
-				Console.WriteLine($"Table index: {index} -- {csize} -- L{level}");
 				level++;
 			}
 
-			Console.WriteLine($"Final addr: {pt + pageIndex:X}");
 			return pt + pageIndex;
 		}
 

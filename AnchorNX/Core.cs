@@ -51,8 +51,14 @@ namespace AnchorNX {
 								
 								Console.WriteLine($"{op0} {op2} {op1} {crn} {rt} {crm}");
 
-								switch(op0, op2, op1, crn, crm) { // OSLAR_EL1
-									case (0b10, 0b100, 0b000, 0b0001, 0b0000):
+								switch(op0, op2, op1, crn, crm) {
+									case (0b11, 0b001, 0b011, 0b1110, 0b0000): // CNTPCT_EL0
+										break;
+									case (0b11, 0b001, 0b011, 0b1110, 0b0010): // CNTP_CTL_EL0
+										break;
+									case (0b11, 0b010, 0b011, 0b1110, 0b0010): // CNTP_CVAL_EL0
+										break;
+									case (0b10, 0b100, 0b000, 0b0001, 0b0000): // OSLAR_EL1
 										lock(OSLock)
 											if(write)
 												OSLock = (Cpu.X[rt] & 1) == 1;
@@ -93,8 +99,15 @@ namespace AnchorNX {
 									}
 									
 									throw new Exception($"Data abort {(write ? "writing to" : "reading from")} 0x{far:X} (bits: {bits} physical address: 0x{pfar:X})");
-								} else
+								} else {
+									var insn = VirtMem.GetSpan<uint>(Cpu.PC, Cpu)[0];
+									if(InterpretLdSt(insn)) {
+										Cpu.PC += 4;
+										break;
+									}
+
 									throw new Exception($"Data abort accessing 0x{far:X} (physical address: 0x{pfar:X})");
+								}
 							default:
 								throw new NotImplementedException($"Unimplemented exception code: {ec} 0b{Convert.ToString((uint) ec, 2)} -- 0x{Cpu.PC:X}");
 						}
@@ -103,6 +116,32 @@ namespace AnchorNX {
 						throw new NotImplementedException($"Unhandled exit {exit.Reason}");
 				}
 			}
+		}
+
+		bool InterpretLdSt(uint inst) {
+			bool Write(ulong addr, int sizeIndex, ulong value) =>
+				MmioDevice.Write(VirtMem.Translate(addr, Cpu), sizeIndex, value);
+
+			bool Read(ulong addr, int sizeIndex, out ulong value) =>
+				MmioDevice.Read(VirtMem.Translate(addr, Cpu), sizeIndex, out value);
+
+			if((inst & 0b10_111_1_11_11_1_000000000_11_00000_00000) == 0b10_111_0_00_00_0_000000000_01_00000_00000) {
+				var size = (inst >> 30) & 0x1U;
+				var imm = (inst >> 12) & 0x1FFU;
+				var rd = (inst >> 5) & 0x1FU;
+				var rs = (inst >> 0) & 0x1FU;
+				var simm = (imm & (1UL << 8)) != 0 ? imm - (1L << 9) : imm;
+				var address = rd == 31 ? Cpu.SP : Cpu.X[(int) rd];
+				if(!Write(address, size == 0 ? 2 : 3, Cpu.X[(int) rs])) return false;
+
+				address = (ulong) ((long) address + simm);
+
+				if(rd == 31) Cpu.SP = address;
+				else Cpu.X[(int) rd] = address;
+
+				return true;
+			}
+			return false;
 		}
 	}
 }

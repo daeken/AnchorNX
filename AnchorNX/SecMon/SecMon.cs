@@ -22,7 +22,9 @@ namespace AnchorNX.SecMon {
 				case (1, 0xc3000004): // GetConfig
 					ulong val;
 					switch(cpu.X[1]) {
+						case 1: // DisableProgramVerification
 						case 10: // MemoryMode
+						case 11: // IsDevelopmentFunctionEnabled
 							val = 1;
 							break;
 						case 12: // KernelConfiguration
@@ -40,14 +42,18 @@ namespace AnchorNX.SecMon {
 						cpu.X[1 + i / 4] = (ulong) Rng.NextInt64();
 					cpu.X[0] = 0;
 					break;
+				case (1, 0xc3000007): // SetKernelCarveoutRegion
+					cpu.X[0] = 0;
+					break;
 				case (1, 0xc3000008): // ReadWriteRegister
-					switch(cpu.X[2], cpu.X[1]) {
-						case (0, 0x70019050): // MC_EMEM_CFG
-							cpu.X[1] = 0x1000; // 4GB physical RAM
-							break;
-						default:
-							throw new NotImplementedException($"{(cpu.X[2] == 0 ? "Read from" : "Write to")} register 0x{cpu.X[1]:X} -- UNIMPLEMENTED");
-					}
+					var write = cpu.X[2] != 0;
+					var value = 0UL;
+					var success = write
+						? MmioDevice.Write(cpu.X[1], 2, cpu.X[3])
+						: MmioDevice.Read(cpu.X[1], 2, out value);
+					if(!success)
+						throw new NotImplementedException($"{(cpu.X[2] == 0 ? "Read from" : "Write to")} register 0x{cpu.X[1]:X} -- UNIMPLEMENTED");
+					if(!write) cpu.X[1] = value;
 					cpu.X[0] = 0;
 					break;
 				default:
