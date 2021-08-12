@@ -1,33 +1,84 @@
 using System;
-using System.Linq;
+using System.Threading;
 using IronVisor;
 
 namespace AnchorNX {
 	public class Core {
+		static readonly ThreadLocal<Core> CoreTls = new();
+		public static Core Current => CoreTls.Value;
+		public static int CurrentId => Current?.Id ?? -1;
+		static int CoreCount = 0;
+		
 		static object OSLock = false; // OS Lock status
 		public readonly Vcpu Cpu;
+		public int Id;
+
+		bool _Interrupt;
+		public bool Interrupt {
+			get => _Interrupt;
+			set {
+				_Interrupt = value;
+				if(value && Id != CurrentId)
+					Cpu.ForceExit();
+			}
+		}
+
+		bool Terminated;
+		public void Terminate() {
+			Terminated = true;
+			Cpu.ForceExit();
+		}
+		
 		public Core(ulong entryPoint, ulong arg = 0) {
+			if(CoreCount == 4) throw new Exception();
+			Id = CoreCount++;
+			Box.Cores[Id] = this;
+			CoreTls.Value = this;
 			Cpu = Box.Vm.CreateVcpu();
-			Cpu.CPSR = 0b0100; // EL1
+			Cpu.CPSR = 0b0101; // EL1
 			Cpu.PC = entryPoint;
 			Cpu.X[0] = arg;
 			Cpu.TrapDebugExceptions = false;
 			Cpu.TrapDebugRegisterAccesses = false;
 		}
 
+		static string Foo = "FOO";
+
 		public void Run() {
 			while(true) {
-				Console.WriteLine($"Running from {Cpu.PC:X}");
+				if(Terminated) return;
+				if(Interrupt) {
+					Interrupt = false;
+					Cpu.IrqPending = true;
+					Console.WriteLine("SET PENDING IRQQQQQQ");
+				}
+
+				lock(Foo) {
+					Console.WriteLine($"Running from {Cpu.PC:X} -- Irq: {Cpu.IrqPending}");
+					/*var span = VirtMem.GetSpan<byte>(Cpu.PC, Cpu);
+					for(var i = 0; i < 16; ++i) {
+						Console.Write($"{span[i]:X2} ");
+					}
+
+					Console.WriteLine();*/
+				}
+
 				var exit = Cpu.Run();
-				Console.WriteLine($"Exited from {Cpu[SysReg.ELR_EL1]:X} ! {exit.Reason} {exit.Syndrome:X} {exit.VirtualAddress:X}");
-				Console.WriteLine($"PC   {Cpu.PC:X}");
-				Console.WriteLine($"PPC  {VirtMem.Translate(Cpu.PC, Cpu):X}");
-				Console.WriteLine($"CPSR {Cpu.CPSR:X}");
-				Console.WriteLine($"X0   {Cpu.X[0]:X}");
-				Console.WriteLine($"X1   {Cpu.X[1]:X}");
-				Console.WriteLine($"X2   {Cpu.X[2]:X}");
-				Console.WriteLine($"X3   {Cpu.X[3]:X}");
-				Console.WriteLine($"X8   {Cpu.X[8]:X}");
+				lock(Foo) {
+					Console.WriteLine(
+						$"Exited from {Cpu[SysReg.ELR_EL1]:X} ! {exit.Reason} {exit.Syndrome:X} {exit.VirtualAddress:X}");
+					Console.WriteLine($"PC   {Cpu.PC:X}");
+					Console.WriteLine($"PPC  {VirtMem.Translate(Cpu.PC, Cpu):X}");
+					Console.WriteLine($"CPSR {Cpu.CPSR:X}");
+					Console.WriteLine($"X0   {Cpu.X[0]:X}");
+					Console.WriteLine($"X1   {Cpu.X[1]:X}");
+					Console.WriteLine($"X2   {Cpu.X[2]:X}");
+					Console.WriteLine($"X3   {Cpu.X[3]:X}");
+					Console.WriteLine($"X8   {Cpu.X[8]:X}");
+				}
+
+				if(Terminated) return;
+
 				switch(exit.Reason) {
 					case ExitReason.Exception:
 						var esr = exit.Syndrome;
@@ -35,6 +86,9 @@ namespace AnchorNX {
 						var pfar = exit.PhysicalAddress;
 						var ec = (ExceptionCode) (esr >> 26);
 						switch(ec) {
+							case ExceptionCode.TrappedWf_:
+								Cpu.PC += 4;
+								break;
 							case ExceptionCode.MonitorCall:
 								var smc = (int) (esr & 0xFFFF);
 								Box.SecMon.Call(Cpu, smc);
@@ -111,6 +165,9 @@ namespace AnchorNX {
 							default:
 								throw new NotImplementedException($"Unimplemented exception code: {ec} 0b{Convert.ToString((uint) ec, 2)} -- 0x{Cpu.PC:X}");
 						}
+						break;
+					case ExitReason.Canceled:
+						Console.WriteLine("Cancelled");
 						break;
 					default:
 						throw new NotImplementedException($"Unhandled exit {exit.Reason}");

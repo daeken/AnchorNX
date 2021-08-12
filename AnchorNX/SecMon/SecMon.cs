@@ -19,6 +19,7 @@ namespace AnchorNX.SecMon {
 						core.Run();
 					}).Start();
 					break;
+				case (0, 0xc3000002): // GetConfig
 				case (1, 0xc3000004): // GetConfig
 					ulong val;
 					switch(cpu.X[1]) {

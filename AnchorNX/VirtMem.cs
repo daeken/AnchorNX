@@ -11,6 +11,10 @@ namespace AnchorNX {
 		public static ulong Translate(ulong addr, Vcpu cpu) {
 			if((cpu[SysReg.SCTLR_EL1] & 1) == 0) return addr;
 			
+			var el = (cpu.CPSR & 0b1111) == 0 ? 0 : 1;
+			if(el == 0)
+				return 0;
+
 			var tcr = cpu[SysReg.TCR_EL1];
 			if(tcr != CurTCR) {
 				CurTCR = tcr;

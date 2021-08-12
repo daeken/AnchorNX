@@ -8,6 +8,15 @@ namespace AnchorNX {
 			Box.Vm = new Vm();
 			PhysMem.Map(0x8000_0000, 0x1_0000_0000);
 
+			var firstBreak = true;
+			Console.CancelKeyPress += (_, evt) => {
+				if(!firstBreak) return;
+				firstBreak = false;
+				for(var i = 0; i < 4; ++i)
+					Box.Cores[i].Interrupt = true;
+				evt.Cancel = true;
+			};
+
 			var kspan = PhysMem.GetSpan<byte>(0x8006_0000);
 			File.ReadAllBytes("Kernel.bin").CopyTo(kspan);
 			/*var suppressAt = 0x54;

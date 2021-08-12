@@ -46,6 +46,11 @@ namespace AnchorNX {
 				: null;
 		}
 
+		public T this[int index] {
+			get => Getter(index);
+			set => Setter(index, value);
+		}
+
 		public object Get(int index) => Getter(index);
 		public void Set(int index, object value) => Setter(index, (T) value);
 	}
@@ -108,6 +113,7 @@ namespace AnchorNX {
 		}
 
 		public bool Get(ulong addr, int sizeIndex, out ulong value) {
+			Console.WriteLine($"Foo? {addr:X}");
 			var offset = (addr - AddressRange.Start) >> sizeIndex;
 			var accessor = Accessors[sizeIndex][offset];
 			switch(accessor) {
@@ -129,6 +135,7 @@ namespace AnchorNX {
 		}
 
 		public bool Set(ulong addr, int sizeIndex, ulong value) {
+			Console.WriteLine($"Bar? {addr:X}");
 			var offset = (addr - AddressRange.Start) >> sizeIndex;
 			var accessor = Accessors[sizeIndex][offset];
 			switch(accessor) {
