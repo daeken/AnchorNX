@@ -11,10 +11,6 @@ namespace AnchorNX {
 		public static ulong Translate(ulong addr, Vcpu cpu) {
 			if((cpu[SysReg.SCTLR_EL1] & 1) == 0) return addr;
 			
-			var el = (cpu.CPSR & 0b1111) == 0 ? 0 : 1;
-			if(el == 0)
-				return 0;
-
 			var tcr = cpu[SysReg.TCR_EL1];
 			if(tcr != CurTCR) {
 				CurTCR = tcr;
@@ -44,6 +40,8 @@ namespace AnchorNX {
 			var isTop = (addr & T1TopMask) == T1TopMask;
 			
 			var pt = cpu[isTop ? SysReg.TTBR1_EL1 : SysReg.TTBR0_EL1];
+			pt &= (1UL << 48) - 1;
+			pt &= ~0b11UL;
 			var size = isTop ? T1Size : T0Size;
 			var pageBits = isTop ? PageBits1 : PageBits0;
 			var pageIndex = addr & ((1UL << pageBits) - 1);

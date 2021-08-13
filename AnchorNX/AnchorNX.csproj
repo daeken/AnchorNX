@@ -11,4 +11,8 @@
       </Reference>
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="LibHac" Version="0.13.2" />
+    </ItemGroup>
+
 </Project>
