@@ -7,6 +7,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using AnchorNX.IpcServices.Nn.Fssrv.Sf;
 using IronVisor;
 
 namespace AnchorNX {
@@ -21,10 +22,14 @@ namespace AnchorNX {
 		public readonly Dictionary<uint, string> ServiceHandles = new();
 		readonly AsyncAutoResetEvent Awoken = new();
 		bool WaitingForWake;
-		IAsyncStateMachine Processor;
+		readonly IAsyncStateMachine Processor;
+		readonly Func<Task> TaskGetter;
+		Task ProcessorTask => TaskGetter();
 
-		string[] ServicesToRegister = {
-			"fsp-ldr", "fsp-pr", "fsp-srv"
+		readonly Dictionary<string, Func<IpcInterface>> ServiceMapping = new() {
+			["fsp-ldr"] = () => new IFileSystemProxyForLoader(), 
+			["fsp-pr"] = () => new IProgramRegistry(), 
+			["fsp-srv"] = () => new IFileSystemProxy(), 
 		};
 
 		public HvcProxy() {
@@ -38,13 +43,13 @@ namespace AnchorNX {
 					continue;
 				found = true;
 				var sm = (IAsyncStateMachine) Activator.CreateInstance(cls);
-				var builder = AsyncTaskMethodBuilder.Create();
 				foreach(var fi in cls.GetFields(BindingFlags.Public | BindingFlags.Instance)) {
 					if(fi.Name.EndsWith("__state"))
 						fi.SetValue(sm, -1);
-					else if(fi.Name.EndsWith("__builder"))
-						fi.SetValue(sm, builder);
-					else if(fi.Name.EndsWith("__this"))
+					else if(fi.Name.EndsWith("__builder")) {
+						fi.SetValue(sm, AsyncTaskMethodBuilder.Create());
+						TaskGetter = () => ((AsyncTaskMethodBuilder) fi.GetValue(sm)).Task;
+					} else if(fi.Name.EndsWith("__this"))
 						fi.SetValue(sm, this);
 					else
 						throw new NotImplementedException($"Unknown public field: '{fi.Name}'");
@@ -81,13 +86,15 @@ namespace AnchorNX {
 				Processor.MoveNext();
 			} else {
 				Console.WriteLine("HvcProxy: Awoken; triggering next cycle");
+				Console.WriteLine($"HvcProxy: {ProcessorTask.Status}");
 				Awoken.Set();
 			}
 
-			while(!WaitingForWake)
+			while(!WaitingForWake && !ProcessorTask.IsCompleted)
 				Processor.MoveNext();
 
-			Console.WriteLine("HvcProxy: Onwake finished");
+			if(ProcessorTask.IsCompleted)
+				throw ProcessorTask.Exception;
 		}
 
 		async Task SendCommand() {
@@ -100,7 +107,7 @@ namespace AnchorNX {
 
 		// ReSharper disable once UnusedMember.Local
 		async Task Process() {
-			foreach(var name in ServicesToRegister) {
+			foreach(var name in ServiceMapping.Keys) {
 				Console.WriteLine($"HvcProxy: Attempting to register '{name}'");
 				var (res, port) = await RegisterService(name, 1000);
 				Console.WriteLine($"HvcProxy: Registering '{name}': {res:X} {port:X}");
@@ -108,12 +115,18 @@ namespace AnchorNX {
 				ServiceHandles[port] = name;
 			}
 
-			var sessionHandles = new List<uint>();
+			var sessionHandles = new Dictionary<uint, IpcInterface>();
 			while(true) {
 				var handles = new List<uint> { EventInterruptEvent };
 				handles.AddRange(ServiceHandles.Keys);
-				handles.AddRange(sessionHandles);
+				handles.AddRange(sessionHandles.Keys);
 				var (res, index) = await WaitSynchronization(handles);
+				Console.WriteLine($"HvcProxy: WaitSynchronization {res:X} {index}");
+				if(res == 0xe401) { // TODO: Unhack.
+					Console.WriteLine($"HvcProxy: Bad handle to waitsync...");
+					sessionHandles.Clear();
+					continue;
+				}
 				Debug.Assert(res == 0);
 				var handle = handles[index];
 				if(index == 0) // EventInterrupt
@@ -124,13 +137,17 @@ namespace AnchorNX {
 					var (rc, session) = await AcceptSession(handle);
 					Debug.Assert(rc == 0);
 					Console.WriteLine($"HvcProxy: Got connection! {session:X}");
-					sessionHandles.Add(session);
+					var iface = sessionHandles[session] = ServiceMapping[serviceName]();
+					iface.Handle = session;
 				} else {
-					Console.WriteLine($"HvcProxy: Message for session {handle:X}");
-					var rc = await ReplyAndReceive(handle);
-					Console.WriteLine($"HvcProxy: Got message? {rc:X}");
-					DumpIpcBuffer();
-					Environment.Exit(0);
+					var iface = sessionHandles[handle];
+					Console.WriteLine($"HvcProxy: Message for session {handle:X} ({iface})");
+					var rc = await Receive(handle);
+					Console.WriteLine($"HvcProxy: Got message? {rc:X} ({iface})");
+					iface.SyncMessage(IpcMemory, out var closeHandle);
+					rc = await Reply(handle);
+					Console.WriteLine($"HvcProxy: Reply sent: {rc:X} (closehandle {closeHandle})");
+					Debug.Assert(rc == 0xEA01);
 				}
 			}
 		}
@@ -188,11 +205,18 @@ namespace AnchorNX {
 			return ((uint) this[0], (uint) this[1]);
 		}
 
-		async Task<uint> ReplyAndReceive(uint receiveHandle, uint replyHandle = 0, long timeout = -1) {
+		async Task<uint> Receive(uint handle = 0, long timeout = -1) {
 			this[0] = 3;
-			this[1] = receiveHandle;
-			this[2] = replyHandle;
-			this[3] = (ulong) timeout;
+			this[1] = handle;
+			this[2] = (ulong) timeout;
+			await SendCommand();
+			return (uint) this[0];
+		}
+
+		async Task<uint> Reply(uint handle, long timeout = 0) {
+			this[0] = 4;
+			this[1] = handle;
+			this[2] = (ulong) timeout;
 			await SendCommand();
 			return (uint) this[0];
 		}

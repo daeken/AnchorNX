@@ -5,6 +5,14 @@
         <TargetFramework>net6.0</TargetFramework>
     </PropertyGroup>
 
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+      <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+      <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
     <ItemGroup>
       <Reference Include="IronVisor, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
         <HintPath>..\..\IronVisor\IronVisor\bin\Debug\net6.0\IronVisor.dll</HintPath>
@@ -13,6 +21,10 @@
 
     <ItemGroup>
       <PackageReference Include="LibHac" Version="0.13.2" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="IpcServices\FS" />
     </ItemGroup>
 
 </Project>

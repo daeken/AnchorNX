@@ -70,12 +70,12 @@ namespace AnchorNX {
 							$"Core {CurrentId} Exited from {Cpu[SysReg.ELR_EL1]:X} ! {exit.Reason} {exit.Syndrome:X} {exit.VirtualAddress:X}");
 						Console.WriteLine($"PC   {Cpu.PC:X}");
 						Console.WriteLine($"PPC  {VirtMem.Translate(Cpu.PC, Cpu):X}");
-						Console.WriteLine($"CPSR {Cpu.CPSR:X}");
+						/*Console.WriteLine($"CPSR {Cpu.CPSR:X}");
 						Console.WriteLine($"X0   {Cpu.X[0]:X}");
 						Console.WriteLine($"X1   {Cpu.X[1]:X}");
 						Console.WriteLine($"X2   {Cpu.X[2]:X}");
 						Console.WriteLine($"X3   {Cpu.X[3]:X}");
-						Console.WriteLine($"X8   {Cpu.X[8]:X}");
+						Console.WriteLine($"X8   {Cpu.X[8]:X}");*/
 					}
 
 					if(Terminated) return;

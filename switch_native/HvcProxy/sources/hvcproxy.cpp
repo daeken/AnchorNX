@@ -86,9 +86,15 @@ int main(int argc, char **argv) {
         log("Woken up; running iteration of command loop");
         switch(sharedMem[0]) {
             case 0: { // WaitSynchronization
-                int32_t index;
+                int32_t index = 0;
+                auto handles = (Handle*) &sharedMem[4];
                 log("Calling waitsync");
-                rc = svcWaitSynchronization(&index, (Handle*) &sharedMem[4], sharedMem[1], sharedMem[2]);
+                for(auto i = 0; i < sharedMem[1]; ++i) {
+                    char buf[1024];
+                    sprintf(buf, "Handle %i == 0x%x", i, handles[i]);
+                    log(buf);
+                }
+                rc = svcWaitSynchronization(&index, handles, sharedMem[1], sharedMem[2]);
                 log("Waitsync returned");
                 sharedMem[0] = rc;
                 sharedMem[1] = (uint64_t) (int64_t) index;
@@ -117,9 +123,18 @@ int main(int argc, char **argv) {
                 log("Woke hvc?!");
                 break;
             }
-            case 3: { // Receive and reply
+            case 3: { // Receive
                 int32_t index;
-                rc = svcReplyAndReceive(&index, (Handle*) &sharedMem[1], 1, (Handle) sharedMem[2], sharedMem[3]);
+                rc = svcReplyAndReceive(&index, (Handle*) &sharedMem[1], 1, 0, sharedMem[2]);
+                sharedMem[0] = rc;
+                log("About to wake hvc...");
+                wakeHvc();
+                log("Woke hvc?!");
+                break;
+            }
+            case 4: { // Reply
+                int32_t index;
+                rc = svcReplyAndReceive(&index, (Handle*) &sharedMem[0], 0, sharedMem[1], sharedMem[2]);
                 sharedMem[0] = rc;
                 log("About to wake hvc...");
                 wakeHvc();
