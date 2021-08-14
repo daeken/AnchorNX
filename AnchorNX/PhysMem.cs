@@ -26,5 +26,12 @@ namespace AnchorNX {
 			var tspan = bm.AsSpan<byte>()[noff..];
 			return MemoryMarshal.Cast<byte, T>(tspan);
 		}
+
+		public static (BoundMemory Memory, int Offset) GetMemory(ulong addr) {
+			var (bm, offset) = Mappings[addr >> 14];
+			if(bm == null) throw new Exception();
+			var noff = (int) ((addr & 0x3FFFUL) + offset);
+			return (bm, noff);
+		}
 	}
 }

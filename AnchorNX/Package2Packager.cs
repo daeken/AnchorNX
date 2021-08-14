@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using LibHac;
 using LibHac.Boot;
@@ -81,7 +82,7 @@ namespace AnchorNX {
 			
 			var pklen = (uint) KernelData.Length;
 			if((pklen & 0xFFF) != 0) pklen = (pklen & ~0xFFFU) + 0x1000;
-			var iniSize = Marshal.SizeOf<IniHeader>() + kips.Select(x => x.Length).Sum();
+			var iniSize = Unsafe.SizeOf<IniHeader>() + kips.Select(x => x.Length).Sum();
 			var tlen = (uint) ((int) pklen + iniSize);
 			if((tlen & 0xFFF) != 0) tlen = (tlen & ~0xFFFU) + 0x1000;
 			var data = new byte[(int) tlen];
@@ -101,7 +102,7 @@ namespace AnchorNX {
 			};
 			MemoryMarshal.Cast<byte, IniHeader>(dspan[(int) pklen..])[0] = iniHeader;
 
-			var ip = (int) pklen + Marshal.SizeOf<IniHeader>();
+			var ip = (int) pklen + Unsafe.SizeOf<IniHeader>();
 			foreach(var kip in kips) {
 				kip.CopyTo(data, ip);
 				ip += kip.Length;

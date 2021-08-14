@@ -1,0 +1,18 @@
+KIPS := HvcProxy
+
+SUBFOLDERS := $(KIPS) # Atmosphere-libs/libstratosphere
+
+TOPTARGETS := all clean
+
+OUTDIR		:=	out
+SD_ROOT     :=  $(OUTDIR)/sd
+TITLE_DIR   :=  $(SD_ROOT)/atmosphere/contents/6900000000000010
+
+$(TOPTARGETS): $(KIPS)
+
+$(SUBFOLDERS):
+	$(MAKE) -C $@ $(MAKECMDGOALS)
+
+$(KIPS): #Atmosphere-libs/libstratosphere
+
+.PHONY: $(TOPTARGETS) $(SUBFOLDERS)

@@ -89,6 +89,8 @@ namespace AnchorNX {
 							Console.WriteLine($"Exception: {ec}");
 							switch(ec) {
 								case ExceptionCode.TrappedWf_:
+									while(!Interrupt)
+										Thread.Sleep(1);
 									Cpu.PC += 4;
 									break;
 								case ExceptionCode.MonitorCall:
@@ -155,8 +157,10 @@ namespace AnchorNX {
 											}
 										}
 
-										throw new Exception(
-											$"Data abort {(write ? "writing to" : "reading from")} 0x{far:X} (bits: {bits} physical address: 0x{pfar:X})");
+										if(write)
+											throw new Exception($"Data abort writing 0x{Cpu.X[srt]:X} to 0x{far:X} (bits: {bits} physical address: 0x{pfar:X})");
+										else
+											throw new Exception($"Data abort reading from 0x{far:X} (bits: {bits} physical address: 0x{pfar:X})");
 									} else {
 										var insn = VirtMem.GetSpan<uint>(Cpu.PC, Cpu)[0];
 										if(InterpretLdSt(insn)) {

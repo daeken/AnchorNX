@@ -1,0 +1,10 @@
+version: "2"
+
+services:
+  devkit:
+    build: .
+    volumes:
+      - ".:/code"
+      - ".:/switch_native"
+      - "../.git:/.git"
+    command: make -j4 -f Makefile.internal

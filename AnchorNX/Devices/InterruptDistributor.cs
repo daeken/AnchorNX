@@ -58,6 +58,8 @@ namespace AnchorNX.Devices {
 			}
 		}
 
+		public void SendInterrupt(int core, int intId) => EnqueueInterrupt(core, intId, 0);
+
 		void EnqueueInterrupt(int core, int intId, int sender) {
 			if(Box.InterruptController.IsInterruptActive(core))
 				Queues[core].Enqueue((intId, sender));

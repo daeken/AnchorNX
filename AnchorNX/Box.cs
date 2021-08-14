@@ -7,6 +7,8 @@ namespace AnchorNX {
 		public static Vm Vm;
 		public static readonly Core[] Cores = new Core[4];
 		public static readonly SecMon.SecMon SecMon = new();
+		public static readonly HvcDevice HvcDevice = new();
+		public static HvcProxy HvcProxy;
 		public static readonly InterruptController InterruptController = new();
 		public static readonly InterruptDistributor InterruptDistributor = new();
 		public static readonly MemoryController MemoryController = new();
