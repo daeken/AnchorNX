@@ -19,11 +19,16 @@ namespace AnchorNX {
 			Size = (int) size;
 			ElementSize = Marshal.SizeOf<T>();
 		}
-		
+
+		public Span<T> SpanFrom(int offset) {
+			Console.WriteLine($"SpanFrom 0x{Address + (ulong) offset:X}");
+			return VirtMem.GetSpan<T>(Address + (ulong) offset, Core.Current.Cpu)[..((Size - offset) / ElementSize)];
+		}
+
 		public Buffer<OtherT> As<OtherT>() where OtherT : struct => new(Address, (ulong) Size);
 		public Buffer<OtherT> As<OtherT>(int size) where OtherT : struct => new(Address, (ulong) size);
 		public Buffer<OtherT> As<OtherT>(ulong size) where OtherT : struct => new(Address, size);
-		public Span<T> Span => VirtMem.GetSpan<T>(Address, Core.Current.Cpu)[..(Size / ElementSize)];
+		public Span<T> Span => SpanFrom(0);
 		public static implicit operator Span<T>(Buffer<T> buffer) => buffer.Span;
 		public static implicit operator T(Buffer<T> buffer) => buffer.Value;
 

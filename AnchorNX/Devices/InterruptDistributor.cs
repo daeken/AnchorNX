@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -14,8 +15,8 @@ namespace AnchorNX.Devices {
 		const uint GICD_SGIR_TARGET_OTHERS_VAL = 1;
 		const uint GICD_SGIR_TARGET_SELF_VAL = 2;
 
-		readonly Queue<(int IntId, int Sender)>[] Queues =
-			Enumerable.Range(0, 4).Select(_ => new Queue<(int, int)>()).ToArray();
+		readonly ConcurrentQueue<(int IntId, int Sender)>[] Queues =
+			Enumerable.Range(0, 4).Select(_ => new ConcurrentQueue<(int, int)>()).ToArray();
 
 		[Mmio(0x50041000)]
 		uint Ctlr {
@@ -61,15 +62,17 @@ namespace AnchorNX.Devices {
 		public void SendInterrupt(int core, int intId) => EnqueueInterrupt(core, intId, 0);
 
 		void EnqueueInterrupt(int core, int intId, int sender) {
+			Console.WriteLine($"Attempting to enqueue interrupt on core {core} -- id {intId}");
 			if(Box.InterruptController.IsInterruptActive(core))
 				Queues[core].Enqueue((intId, sender));
 			else {
+				Console.WriteLine("No interrupt active -- shooting");
 				Box.InterruptController.SetActiveInterrupt(core, intId, sender);
-				Box.Cores[core].Interrupt = true;
 			}
 		}
 
 		public void HandleNextInterrupt(int core) {
+			Console.WriteLine($"Handling next interrupt for core {core} -- {Queues[core].Count} in the queue");
 			if(Queues[core].TryDequeue(out var next))
 				Box.InterruptController.SetActiveInterrupt(core, next.IntId, next.Sender);
 			else

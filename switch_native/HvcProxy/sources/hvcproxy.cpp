@@ -79,28 +79,33 @@ int main(int argc, char **argv) {
     uint64_t tlsAddr;
     asm("mrs %0, tpidrro_el0" : "=r" (tlsAddr));
     sharedMem[3] = tlsAddr;
+    sharedMem[4] = (uint64_t) malloc(0x2000);
     wakeHvc();
+    uint64_t reqBufferAddr = (uint64_t) malloc(0x2000);
+    while(reqBufferAddr & 0xFFF)
+        reqBufferAddr++;
+    void* reqBuffer = (void*) reqBufferAddr;
     while(true) {
         log("Going back to sleep...");
         Result rc = svcWaitSynchronizationSingle(wakeInterruptEvent, -1);
+        if(rc != 0) {
+            log("Wait for interrupt failed?!");
+            return 0;
+        }
+        rc = svcClearEvent(wakeInterruptEvent);
+        if(rc != 0) {
+            log("Clear interrupt failed?!");
+            return 0;
+        }
         log("Woken up; running iteration of command loop");
         switch(sharedMem[0]) {
             case 0: { // WaitSynchronization
                 int32_t index = 0;
                 auto handles = (Handle*) &sharedMem[4];
-                log("Calling waitsync");
-                for(auto i = 0; i < sharedMem[1]; ++i) {
-                    char buf[1024];
-                    sprintf(buf, "Handle %i == 0x%x", i, handles[i]);
-                    log(buf);
-                }
                 rc = svcWaitSynchronization(&index, handles, sharedMem[1], sharedMem[2]);
-                log("Waitsync returned");
                 sharedMem[0] = rc;
                 sharedMem[1] = (uint64_t) (int64_t) index;
-                log("About to wake hvc");
                 wakeHvc();
-                log("Woke hvc");
                 break;
             }
             case 1: { // Register service
@@ -108,9 +113,7 @@ int main(int argc, char **argv) {
                 rc = smRegisterService(&port, smServiceNameFromU64(sharedMem[1]), false, (s32) sharedMem[2]);
                 sharedMem[0] = rc;
                 sharedMem[1] = port;
-                log("About to wake hvc...");
                 wakeHvc();
-                log("Woke hvc?!");
                 break;
             }
             case 2: { // Accept session
@@ -118,27 +121,63 @@ int main(int argc, char **argv) {
                 rc = svcAcceptSession(&session, (Handle) sharedMem[1]);
                 sharedMem[0] = rc;
                 sharedMem[1] = session;
-                log("About to wake hvc...");
                 wakeHvc();
-                log("Woke hvc?!");
                 break;
             }
             case 3: { // Receive
                 int32_t index;
                 rc = svcReplyAndReceive(&index, (Handle*) &sharedMem[1], 1, 0, sharedMem[2]);
                 sharedMem[0] = rc;
-                log("About to wake hvc...");
                 wakeHvc();
-                log("Woke hvc?!");
                 break;
             }
             case 4: { // Reply
                 int32_t index;
                 rc = svcReplyAndReceive(&index, (Handle*) &sharedMem[0], 0, sharedMem[1], sharedMem[2]);
                 sharedMem[0] = rc;
-                log("About to wake hvc...");
                 wakeHvc();
-                log("Woke hvc?!");
+                break;
+            }
+            case 5: { // CreateSession
+                Handle server, client;
+                rc = svcCreateSession(&server, &client, 0, 0);
+                sharedMem[0] = rc;
+                sharedMem[1] = server;
+                sharedMem[2] = client;
+                wakeHvc();
+                break;
+            }
+            case 6: { // GetService
+                Service service;
+                rc = smGetService(&service, (const char*) &sharedMem[1]);
+                sharedMem[0] = rc;
+                sharedMem[1] = service.session;
+                wakeHvc();
+                break;
+            }
+            case 7: { // SendAsyncRequest
+                Handle doneEvent;
+                memcpy(reqBuffer, (void*) tlsAddr, 0x100);
+                sharedMem[0] = svcSendAsyncRequestWithUserBuffer(&doneEvent, reqBuffer, 0x1000, (Handle) sharedMem[1]);
+                wakeHvc();
+                break;
+            }
+            case 8: { // ResetSignal
+                sharedMem[0] = svcResetSignal((Handle) sharedMem[1]);
+                wakeHvc();
+                break;
+            }
+            case 9: { // OpenLocationResolver
+                lrInitialize();
+                LrLocationResolver* resolver = (LrLocationResolver*) malloc(sizeof(LrLocationResolver));
+                sharedMem[0] = lrOpenLocationResolver((NcmStorageId) sharedMem[1], resolver);
+                sharedMem[1] = (uint64_t) resolver;
+                wakeHvc();
+                break;
+            }
+            case 10: { // ResolveDataPath
+                sharedMem[0] = lrLrResolveDataPath((LrLocationResolver*) sharedMem[1], sharedMem[2], (char*) &sharedMem[4]);
+                wakeHvc();
                 break;
             }
             default: {

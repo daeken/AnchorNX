@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Threading;
 using IronVisor;
 
@@ -12,6 +13,16 @@ namespace AnchorNX {
 		static object OSLock = false; // OS Lock status
 		public readonly Vcpu Cpu;
 		public int Id;
+
+		const ulong CntFrq = 19200000;
+		public ulong CntpCval;
+		public ulong CntPct {
+			get {
+				var ticks = (double) Box.Stopwatch.ElapsedTicks / Stopwatch.Frequency;
+				return (ulong) (ticks * CntFrq);
+			}
+		}
+		public bool TimerInterruptEnabled;
 
 		bool _Interrupt;
 		public bool Interrupt {
@@ -40,6 +51,16 @@ namespace AnchorNX {
 			Cpu.X[0] = arg;
 			Cpu.TrapDebugExceptions = false;
 			Cpu.TrapDebugRegisterAccesses = false;
+			
+			new Thread(() => {
+				while(true) {
+					Thread.Sleep(1);
+					if(TimerInterruptEnabled && CntPct >= CntpCval) {
+						TimerInterruptEnabled = false;
+						Box.InterruptDistributor.SendInterrupt(Id, 30);
+					}
+				}
+			}).Start();
 		}
 
 		static string Foo = "FOO";
@@ -47,15 +68,17 @@ namespace AnchorNX {
 		public void Run() {
 			try {
 				while(true) {
+					var interrupted = false;
 					if(Terminated) return;
 					if(Interrupt) {
 						Interrupt = false;
 						Cpu.IrqPending = true;
-						Console.WriteLine("SET PENDING IRQQQQQQ");
+						interrupted = true;
+						Console.WriteLine("Sent interrupt to guest");
 					}
 
 					lock(Foo) {
-						Console.WriteLine($"Running from {Cpu.PC:X} -- Irq: {Cpu.IrqPending}");
+						Console.WriteLine($"Core {Id} running from {Cpu.PC:X} -- Irq: {Cpu.IrqPending}");
 						/*var span = VirtMem.GetSpan<byte>(Cpu.PC, Cpu);
 						for(var i = 0; i < 16; ++i) {
 							Console.Write($"{span[i]:X2} ");
@@ -67,15 +90,7 @@ namespace AnchorNX {
 					var exit = Cpu.Run();
 					lock(Foo) {
 						Console.WriteLine(
-							$"Core {CurrentId} Exited from {Cpu[SysReg.ELR_EL1]:X} ! {exit.Reason} {exit.Syndrome:X} {exit.VirtualAddress:X}");
-						Console.WriteLine($"PC   {Cpu.PC:X}");
-						Console.WriteLine($"PPC  {VirtMem.Translate(Cpu.PC, Cpu):X}");
-						/*Console.WriteLine($"CPSR {Cpu.CPSR:X}");
-						Console.WriteLine($"X0   {Cpu.X[0]:X}");
-						Console.WriteLine($"X1   {Cpu.X[1]:X}");
-						Console.WriteLine($"X2   {Cpu.X[2]:X}");
-						Console.WriteLine($"X3   {Cpu.X[3]:X}");
-						Console.WriteLine($"X8   {Cpu.X[8]:X}");*/
+							$"Core {CurrentId} Exited from {Cpu.PC:X} ! {exit.Reason} {exit.Syndrome:X} 0x{VirtMem.Translate(Cpu.PC, Cpu):X}");
 					}
 
 					if(Terminated) return;
@@ -89,8 +104,17 @@ namespace AnchorNX {
 							Console.WriteLine($"Exception: {ec}");
 							switch(ec) {
 								case ExceptionCode.TrappedWf_:
-									while(!Interrupt)
-										Thread.Sleep(1);
+									if((esr & 1) == 0) {
+										Console.WriteLine("Waiting for interrupt");
+										if(!Interrupt && Box.InterruptController.IsInterruptActive(Id)) {
+											Console.WriteLine("Interrupt actually active; rethrowing");
+											Interrupt = true;
+											break;
+										}
+										while(!Interrupt)
+											Thread.Sleep(1);
+										Console.WriteLine("Resuming!");
+									}
 									Cpu.PC += 4;
 									break;
 								case ExceptionCode.MonitorCall:
@@ -111,10 +135,22 @@ namespace AnchorNX {
 
 									switch (op0, op2, op1, crn, crm) {
 										case (0b11, 0b001, 0b011, 0b1110, 0b0000): // CNTPCT_EL0
+											if(write) throw new NotImplementedException();
+											var cntpct = Cpu.X[rt] = CntPct;
+											Console.WriteLine($"CntPct: 0x{cntpct:X}");
 											break;
 										case (0b11, 0b001, 0b011, 0b1110, 0b0010): // CNTP_CTL_EL0
+											if(!write) throw new NotImplementedException();
+											Console.WriteLine($"CNTP_CTL_EL0 write: 0x{Cpu.X[rt]:X}");
+											var val = Cpu.X[rt];
+											TimerInterruptEnabled = (val & 1) != 0;
 											break;
 										case (0b11, 0b010, 0b011, 0b1110, 0b0010): // CNTP_CVAL_EL0
+											if(write)
+												CntpCval = Cpu.X[rt];
+											else
+												Cpu.X[rt] = CntpCval;
+											Console.WriteLine($"CNTP_CVAL_EL0 {(write ? "write" : "read")}: 0x{CntpCval:X}");
 											break;
 										case (0b10, 0b100, 0b000, 0b0001, 0b0000): // OSLAR_EL1
 											lock(OSLock)
@@ -179,6 +215,10 @@ namespace AnchorNX {
 							break;
 						case ExitReason.Canceled:
 							Console.WriteLine("Cancelled");
+							if(interrupted) {
+								Console.WriteLine("Rethrowing interrupt");
+								//Interrupt = true;
+							}
 							break;
 						default:
 							throw new NotImplementedException($"Unhandled exit {exit.Reason}");

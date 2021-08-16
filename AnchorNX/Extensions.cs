@@ -26,6 +26,9 @@ namespace AnchorNX {
 			Console.WriteLine($"{buffer.Length:X4}");
 		}
 
+		public static Span<U> As<T, U>(this Span<T> span) where T : struct where U : struct =>
+			MemoryMarshal.Cast<T, U>(span);
+
 		public static void Debug(this string message) => Console.WriteLine($"DEBUG: {message}");
 
 		public static Memory<TTo> Cast<TFrom, TTo>(this Memory<TFrom> from)

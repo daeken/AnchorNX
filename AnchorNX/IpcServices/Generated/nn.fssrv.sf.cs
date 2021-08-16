@@ -1,5 +1,7 @@
 #pragma warning disable 169, 465
 using System;
+using System.Threading.Tasks;
+
 namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	public enum FileSystemType : uint {
 		Invalid = 0x0, 
@@ -41,9 +43,9 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		User = 0x1F, 
 	}
 	
-	public unsafe partial class IFileSystemProxy : _Base_IFileSystemProxy {}
-	public unsafe class _Base_IFileSystemProxy : IpcInterface {
-		public override void _Dispatch(IncomingMessage im, OutgoingMessage om) {
+	public partial class IFileSystemProxy : _Base_IFileSystemProxy {}
+	public class _Base_IFileSystemProxy : IpcInterface {
+		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // OpenFileSystem
 					var ret = OpenFileSystem(im.GetData<Nn.Fssrv.Sf.FileSystemType>(8), im.GetBuffer<byte>(0x19, 0));
@@ -183,19 +185,19 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 					break;
 				}
 				case 51: { // OpenSaveDataFileSystem
-					var ret = OpenSaveDataFileSystem(im.GetData<byte>(8), im.GetBytes(9, 0x40));
+					var ret = OpenSaveDataFileSystem(im.GetData<byte>(8), im.GetBytes(16, 0x40));
 					om.Initialize(1, 0, 0);
 					om.Move(0, CreateHandle(ret));
 					break;
 				}
 				case 52: { // OpenSaveDataFileSystemBySystemSaveDataId
-					var ret = OpenSaveDataFileSystemBySystemSaveDataId(im.GetData<byte>(8), im.GetBytes(9, 0x40));
+					var ret = OpenSaveDataFileSystemBySystemSaveDataId(im.GetData<byte>(8), im.GetBytes(16, 0x40));
 					om.Initialize(1, 0, 0);
 					om.Move(0, CreateHandle(ret));
 					break;
 				}
 				case 53: { // OpenReadOnlySaveDataFileSystem
-					var ret = OpenReadOnlySaveDataFileSystem(im.GetData<byte>(8), im.GetBytes(9, 0x40));
+					var ret = OpenReadOnlySaveDataFileSystem(im.GetData<byte>(8), im.GetBytes(16, 0x40));
 					om.Initialize(1, 0, 0);
 					om.Move(0, CreateHandle(ret));
 					break;
@@ -289,7 +291,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 					break;
 				}
 				case 202: { // OpenDataStorageByDataId
-					var ret = OpenDataStorageByDataId(im.GetData<byte>(8), im.GetData<ulong>(16));
+					var ret = await OpenDataStorageByDataId(im.GetData<byte>(8), im.GetData<ulong>(16));
 					om.Initialize(1, 0, 0);
 					om.Move(0, CreateHandle(ret));
 					break;
@@ -579,7 +581,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		public virtual Nn.Fssrv.Sf.IFileSystem OpenContentStorageFileSystem(uint content_storage_id) => throw new NotImplementedException();
 		public virtual Nn.Fssrv.Sf.IStorage OpenDataStorageByCurrentProcess() => throw new NotImplementedException();
 		public virtual Nn.Fssrv.Sf.IStorage OpenDataStorageByProgramId(ulong tid) => throw new NotImplementedException();
-		public virtual Nn.Fssrv.Sf.IStorage OpenDataStorageByDataId(byte storage_id, ulong tid) => throw new NotImplementedException();
+		public virtual async Task<Nn.Fssrv.Sf.IStorage> OpenDataStorageByDataId(byte storage_id, ulong tid) => throw new NotImplementedException();
 		public virtual Nn.Fssrv.Sf.IStorage OpenPatchDataStorageByCurrentProcess() => throw new NotImplementedException();
 		public virtual Nn.Fssrv.Sf.IDeviceOperator OpenDeviceOperator() => throw new NotImplementedException();
 		public virtual Nn.Fssrv.Sf.IEventNotifier OpenSdCardDetectionEventNotifier() => throw new NotImplementedException();
@@ -628,11 +630,12 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	
 	public unsafe partial class IFileSystemProxyForLoader : _Base_IFileSystemProxyForLoader {}
 	public unsafe class _Base_IFileSystemProxyForLoader : IpcInterface {
-		public override void _Dispatch(IncomingMessage im, OutgoingMessage om) {
+		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // OpenCodeFileSystem
-					var ret = OpenCodeFileSystem(im.GetData<ulong>(8), im.GetBuffer<byte>(0x19, 0));
-					om.Initialize(1, 0, 0);
+					var (tid, content_path) = (im.GetData<ulong>(8), im.GetBuffer<byte>(0x19, 0));
+					om.Initialize(1, 0, 0, 0x124);
+					var ret = OpenCodeFileSystem(tid, content_path, om.GetXBuffer<byte>(0));
 					om.Move(0, CreateHandle(ret));
 					break;
 				}
@@ -652,14 +655,14 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 			}
 		}
 		
-		public virtual Nn.Fssrv.Sf.IFileSystem OpenCodeFileSystem(ulong Tid, Buffer<byte> content_path) => throw new NotImplementedException();
+		public virtual Nn.Fssrv.Sf.IFileSystem OpenCodeFileSystem(ulong Tid, Buffer<byte> content_path, Buffer<byte> code_info) => throw new NotImplementedException();
 		public virtual byte IsArchivedProgram(ulong _0) => throw new NotImplementedException();
 		public virtual void SetCurrentProcess(ulong _0, ulong _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxyForLoader.SetCurrentProcess [2]".Debug();
 	}
 	
 	public unsafe partial class IProgramRegistry : _Base_IProgramRegistry {}
 	public unsafe class _Base_IProgramRegistry : IpcInterface {
-		public override void _Dispatch(IncomingMessage im, OutgoingMessage om) {
+		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // RegisterProgram
 					RegisterProgram(im.GetData<byte>(8), im.GetData<ulong>(16), im.GetData<ulong>(24), im.GetData<ulong>(32), im.GetData<ulong>(40), im.GetBuffer<byte>(0x5, 0), im.GetBuffer<byte>(0x5, 1));
@@ -694,7 +697,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	
 	public unsafe partial class IDeviceOperator : _Base_IDeviceOperator {}
 	public unsafe class _Base_IDeviceOperator : IpcInterface {
-		public override void _Dispatch(IncomingMessage im, OutgoingMessage om) {
+		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // IsSdCardInserted
 					var ret = IsSdCardInserted();
@@ -952,7 +955,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	
 	public unsafe partial class IDirectory : _Base_IDirectory {}
 	public unsafe class _Base_IDirectory : IpcInterface {
-		public override void _Dispatch(IncomingMessage im, OutgoingMessage om) {
+		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // Read
 					Read(out var _0, im.GetBuffer<byte>(0x6, 0));
@@ -977,7 +980,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	
 	public unsafe partial class IEventNotifier : _Base_IEventNotifier {}
 	public unsafe class _Base_IEventNotifier : IpcInterface {
-		public override void _Dispatch(IncomingMessage im, OutgoingMessage om) {
+		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // GetEventHandle
 					var ret = GetEventHandle();
@@ -995,7 +998,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	
 	public unsafe partial class IFile : _Base_IFile {}
 	public unsafe class _Base_IFile : IpcInterface {
-		public override void _Dispatch(IncomingMessage im, OutgoingMessage om) {
+		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // Read
 					Read(im.GetData<uint>(8), im.GetData<ulong>(16), im.GetData<ulong>(24), out var _0, im.GetBuffer<byte>(0x46, 0));
@@ -1045,7 +1048,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	
 	public unsafe partial class IFileSystem : _Base_IFileSystem {}
 	public unsafe class _Base_IFileSystem : IpcInterface {
-		public override void _Dispatch(IncomingMessage im, OutgoingMessage om) {
+		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // CreateFile
 					CreateFile(im.GetData<uint>(8), im.GetData<ulong>(16), im.GetBuffer<byte>(0x19, 0));
@@ -1158,7 +1161,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	
 	public unsafe partial class ISaveDataExporter : _Base_ISaveDataExporter {}
 	public unsafe class _Base_ISaveDataExporter : IpcInterface {
-		public override void _Dispatch(IncomingMessage im, OutgoingMessage om) {
+		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // Unknown0
 					Unknown0(im.GetBuffer<byte>(0x1A, 0));
@@ -1195,7 +1198,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	
 	public unsafe partial class ISaveDataImporter : _Base_ISaveDataImporter {}
 	public unsafe class _Base_ISaveDataImporter : IpcInterface {
-		public override void _Dispatch(IncomingMessage im, OutgoingMessage om) {
+		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // Unknown0
 					Unknown0(im.GetBuffer<byte>(0x1A, 0));
@@ -1231,7 +1234,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	
 	public unsafe partial class ISaveDataInfoReader : _Base_ISaveDataInfoReader {}
 	public unsafe class _Base_ISaveDataInfoReader : IpcInterface {
-		public override void _Dispatch(IncomingMessage im, OutgoingMessage om) {
+		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // ReadSaveDataInfo
 					ReadSaveDataInfo(out var _0, im.GetBuffer<byte>(0x6, 0));
@@ -1249,7 +1252,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	
 	public unsafe partial class ISaveDataTransferManager : _Base_ISaveDataTransferManager {}
 	public unsafe class _Base_ISaveDataTransferManager : IpcInterface {
-		public override void _Dispatch(IncomingMessage im, OutgoingMessage om) {
+		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // Unknown0
 					Unknown0(im.GetBuffer<byte>(0x6, 0));
@@ -1287,7 +1290,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	
 	public unsafe partial class IStorage : _Base_IStorage {}
 	public unsafe class _Base_IStorage : IpcInterface {
-		public override void _Dispatch(IncomingMessage im, OutgoingMessage om) {
+		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // Read
 					Read(im.GetData<ulong>(8), im.GetData<ulong>(16), im.GetBuffer<byte>(0x46, 0));

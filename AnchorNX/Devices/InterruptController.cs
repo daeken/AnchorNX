@@ -4,7 +4,7 @@ namespace AnchorNX.Devices {
 	public class InterruptController : MmioDevice {
 		public override (ulong, ulong) AddressRange => (0x50042000, 0x50043FFF);
 
-		readonly (int Id, int Sender)[] ActiveInterrupt = new[] {
+		readonly (int Id, int Sender)[] ActiveInterrupt = {
 			(0x3FF, 0), (0x3FF, 0), (0x3FF, 0), (0x3FF, 0)
 		};
 
@@ -40,6 +40,10 @@ namespace AnchorNX.Devices {
 		}
 
 		public bool IsInterruptActive(int core) => ActiveInterrupt[core].Id != 0x3FF;
-		public void SetActiveInterrupt(int core, int intId, int sender) => ActiveInterrupt[core] = (intId, sender);
+		public void SetActiveInterrupt(int core, int intId, int sender) {
+			ActiveInterrupt[core] = (intId, sender);
+			if(intId != 0x3FF)
+				Box.Cores[core].Interrupt = true;
+		}
 	}
 }

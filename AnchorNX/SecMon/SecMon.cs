@@ -6,6 +6,7 @@ namespace AnchorNX.SecMon {
 	public class SecMon {
 		static Random Rng = new(0x_EADBEEF);
 		public void Call(Vcpu cpu, int func) {
+			Console.WriteLine($"SecMon call {func}, 0x{cpu.X[0]:X}");
 			switch(func, cpu.X[0]) {
 				case (1, 0xc4000003): // PowerOnCPU
 					cpu.X[0] = 0;
@@ -27,9 +28,11 @@ namespace AnchorNX.SecMon {
 						5 => 0, // HardwareType -- Icosa
 						6 => 1, // HardwareState -- Production
 						7 => 0, // IsRecoveryBoot
+						8 => 0, // DeviceId
 						10 => 1, // MemoryMode
 						11 => 1, // IsDevelopmentFunctionEnabled
 						12 => 0, // KernelConfiguration
+						14 => 0, // QuestState
 						16 => 0, // DeviceUniqueKeyGeneration
 						_ => throw new NotImplementedException($"Unhandled configuration option: {cpu.X[1]}")
 					};
@@ -52,6 +55,7 @@ namespace AnchorNX.SecMon {
 				case (1, 0xc3000008): // ReadWriteRegister
 					var write = cpu.X[2] != 0;
 					var value = 0UL;
+					Console.WriteLine($"ReadWriteRegister -- {(write ? "write to" : "read from")} 0x{cpu.X[1]:X}");
 					var success = write
 						? MmioDevice.Write(cpu.X[1], 2, cpu.X[3])
 						: MmioDevice.Read(cpu.X[1], 2, out value);

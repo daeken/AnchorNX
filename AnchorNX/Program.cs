@@ -7,8 +7,14 @@ namespace AnchorNX {
 		static void Main(string[] args) {
 			var packager = new Package2Packager("BCPKG2-1-Normal-Main.img");
 			packager.Remove("FS");
+			packager.Remove("boot");
 			packager.Add(File.ReadAllBytes("HvcProxy.kip"));
 			var package2 = packager.BuildPackage2();
+
+			Box.DisabledTitles.Add(0x0100000000000006);
+			Box.DisabledTitles.Add(0x010000000000001D);
+			Box.DisabledTitles.Add(0x010000000000000A);
+			Box.DisabledTitles.Add(0x010000000000001A);
 			
 			Box.Vm = new Vm();
 			PhysMem.Map(0x8000_0000, 0x1_0000_0000);

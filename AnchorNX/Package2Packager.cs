@@ -27,12 +27,10 @@ namespace AnchorNX {
 		
 		public Package2Packager(string fn) {
 			var reader = new Package2StorageReader();
-			var keyset = ExternalKeyReader.ReadKeyFile(
-				Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".switch/prod.keys"));
 			var raw = new LocalStorage(fn, FileAccess.Read);
 			raw.GetSize(out var rsize).ThrowIfFailure();
 			var sub = new SubStorage(raw, 0x4000, rsize - 0x4000);
-			reader.Initialize(keyset, sub).ThrowIfFailure();
+			reader.Initialize(Box.KeySet, sub).ThrowIfFailure();
 
 			Debug.Assert(reader.Header.Meta.PayloadSizes[IniPayloadIndex] == 0); // TODO: Support pre-inlined kernels
 
