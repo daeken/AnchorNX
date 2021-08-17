@@ -50,8 +50,6 @@ namespace AnchorNX {
 			Cpu.ForceExit();
 		}
 
-		bool HookedInterrupts;
-		
 		public Core(ulong entryPoint, ulong arg = 0) {
 			if(CoreCount == 4) throw new Exception();
 			Id = CoreCount++;
@@ -78,21 +76,10 @@ namespace AnchorNX {
 		public unsafe void Run() {
 			try {
 				while(true) {
-					if(Box.Initialized && !HookedInterrupts) {
-						HookedInterrupts = true;
-						var vbar = Cpu[SysReg.VBAR_EL1];
-						var hea = vbar - 0x60800 + 0xA1320;
-						Log($"HEA: {hea:X}");
-						var syn = VirtMem.GetSpan<uint>(hea, Cpu);
-						syn[0] = 0xd4000022;
-					}
-					
-					var interrupted = false;
 					if(Terminated) return;
 					if(Interrupt) {
 						Interrupt = false;
 						Cpu.IrqPending = true;
-						interrupted = true;
 					}
 
 					Log($"Core {Id} running from {Cpu.PC:X} -- Irq: {Cpu.IrqPending}");

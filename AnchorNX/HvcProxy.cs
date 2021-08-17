@@ -84,19 +84,26 @@ namespace AnchorNX {
 
 		public void OnWake() {
 			if(!Initialized) {
-				Box.Initialized = true;
 				WakeInterruptEvent = (uint) this[0];
 				EventInterruptEvent = (uint) this[1];
 				BaseAddr = this[2];
 				IpcBufAddr = this[3];
 				XBufAddr = this[4];
-				Log($"XBuf addr: {XBufAddr:X}");
 				RecvBufAddr = BaseAddr + 0x11000;
 				var iaddr = VirtMem.Translate(IpcBufAddr, Core.Current.Cpu);
 				var (imem, ioff) = PhysMem.GetMemory(iaddr);
 				IpcMemory = imem.Memory[ioff..(ioff + 0x100)];
-				Log("HvcProxy initialized on HV side; starting processor state machine");
+				
+				var vbar = Core.Current.Cpu[SysReg.VBAR_EL1];
+				var hea = vbar - 0x60800 + 0xA1320;
+				var syn = VirtMem.GetSpan<uint>(hea, Core.Current.Cpu);
+				if(syn[0] == 0xD10243FF) {
+					syn[0] = 0xD4000022;
+					Log("Patched usermode exception handler to break to HVC!");
+				}
+
 				Initialized = true;
+				Log("HvcProxy initialized on HV side; starting processor state machine");
 				Processor.MoveNext();
 
 				new Thread(() => {
