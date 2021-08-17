@@ -40,22 +40,23 @@ namespace AnchorNX.Devices {
 		uint Sgir {
 			get => 0;
 			set {
-				var targetList = (value & GICD_SGIR_TARGET_LIST_MASK) >> GICD_SGIR_TARGET_LIST_SHIFT;
-				var target = (value & GICD_SGIR_TARGET_MASK) >> GICD_SGIR_TARGET_SHIFT;
+				var targetListFilter = (value & GICD_SGIR_TARGET_LIST_MASK) >> GICD_SGIR_TARGET_LIST_SHIFT;
+				var targetList = (value & GICD_SGIR_TARGET_MASK) >> GICD_SGIR_TARGET_SHIFT;
 				var intid = value & GICD_SGIR_INTID_MASK;
 				
-				Console.WriteLine($"Interrupt in flight: target {target:X} intid {intid:X}");
+				Console.WriteLine($"Interrupt in flight: targetList {targetList:X} targetListFilter {targetListFilter} intid {intid:X}");
 
-				if(target == GICD_SGIR_TARGET_OTHERS_VAL)
+				if(targetListFilter == GICD_SGIR_TARGET_OTHERS_VAL)
 					for(var i = 0; i < 4; ++i) {
 						if(i != Core.CurrentId)
 							EnqueueInterrupt(i, (int) intid, Core.CurrentId);
 					}
-				else if(target == GICD_SGIR_TARGET_SELF_VAL)
+				else if(targetListFilter == GICD_SGIR_TARGET_SELF_VAL)
 					EnqueueInterrupt(Core.CurrentId, (int) intid, Core.CurrentId);
 				else
 					for(var i = 0; i < 4; ++i)
-						EnqueueInterrupt(i, (int) intid, Core.CurrentId);
+						if(targetList.HasBit(i))
+							EnqueueInterrupt(i, (int) intid, Core.CurrentId);
 			}
 		}
 

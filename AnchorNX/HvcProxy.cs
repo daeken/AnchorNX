@@ -81,6 +81,7 @@ namespace AnchorNX {
 
 		public void OnWake() {
 			if(!Initialized) {
+				Box.Initialized = true;
 				WakeInterruptEvent = (uint) this[0];
 				EventInterruptEvent = (uint) this[1];
 				BaseAddr = this[2];

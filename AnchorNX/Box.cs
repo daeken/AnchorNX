@@ -24,5 +24,7 @@ namespace AnchorNX {
 		public static readonly Uart Uart = new();
 
 		public static readonly HashSet<ulong> DisabledTitles = new();
+
+		public static bool Initialized;
 	}
 }

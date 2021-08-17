@@ -198,7 +198,7 @@ namespace AnchorNX {
  
 			SfcoOffset = pos * 4;
 			buf[pos] = 0x4f434653; // SFCO
-			buf[pos + 1] = 1;
+			//buf[pos + 1] = 1; // New version?
 		}
 
 		public void Move(uint offset, uint handle) {

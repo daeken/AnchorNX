@@ -1,9 +1,16 @@
 using System;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Threading;
 using IronVisor;
 
 namespace AnchorNX {
+	[StructLayout(LayoutKind.Sequential)]
+	unsafe struct HosExceptionContext {
+		public fixed ulong X[31];
+		public ulong SP, PC, Spsr, Tpidr;
+	}
+	
 	public class Core {
 		static readonly ThreadLocal<Core> CoreTls = new();
 		public static Core Current => CoreTls.Value;
@@ -39,6 +46,8 @@ namespace AnchorNX {
 			Terminated = true;
 			Cpu.ForceExit();
 		}
+
+		bool HookedInterrupts;
 		
 		public Core(ulong entryPoint, ulong arg = 0) {
 			if(CoreCount == 4) throw new Exception();
@@ -65,9 +74,19 @@ namespace AnchorNX {
 
 		static string Foo = "FOO";
 
-		public void Run() {
+		public unsafe void Run() {
 			try {
 				while(true) {
+					if(Box.Initialized && !HookedInterrupts) {
+						HookedInterrupts = true;
+						Console.WriteLine($"VBAR_EL1: {Cpu[SysReg.VBAR_EL1]:X}");
+						var vbar = Cpu[SysReg.VBAR_EL1];
+						var hea = vbar - 0x60800 + 0xA1320;
+						Console.WriteLine($"HEA: {hea:X}");
+						var syn = VirtMem.GetSpan<uint>(hea, Cpu);
+						syn[0] = 0xd4000022;
+					}
+					
 					var interrupted = false;
 					if(Terminated) return;
 					if(Interrupt) {
@@ -116,6 +135,19 @@ namespace AnchorNX {
 										Console.WriteLine("Resuming!");
 									}
 									Cpu.PC += 4;
+									break;
+								case ExceptionCode.HyperCall:
+									Console.WriteLine($"Got HVC; usermode exception");
+									var hec = VirtMem.GetSpan<HosExceptionContext>(Cpu.X[0], Cpu)[0];
+									for(var i = 0; i < 31; ++i)
+										Console.WriteLine($"X{i}: 0x{hec.X[i]:X}");
+									Console.WriteLine($"SP: 0x{hec.SP:X}");
+									Console.WriteLine($"PC: 0x{hec.PC:X}");
+									var cs = VirtMem.GetSpan<byte>(hec.PC, Cpu);
+									for(var i = 0; i < 16; ++i)
+										Console.Write($"{cs[i]:X2} ");
+									Console.WriteLine();
+									Environment.Exit(0);
 									break;
 								case ExceptionCode.MonitorCall:
 									var smc = (int) (esr & 0xFFFF);

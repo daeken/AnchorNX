@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 
 namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	public partial class IStorage {
@@ -16,6 +17,9 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 				Console.WriteLine("OVERLENGTH BUFFER!");
 				length = (ulong) data.Length;
 			}
+			
+			Debug.Assert(length == (ulong) data.Length);
+
 			for(var i = 0UL; i < length; ) {
 				var pageOff = 0x1000 - ((data.Address + i) & 0xFFF);
 				var tr = (int) Math.Min((ulong) Length - offset, Math.Min(pageOff, length - i));
