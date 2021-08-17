@@ -26,7 +26,6 @@ namespace AnchorNX {
 			BCount = (buf[0] >> 24) & 0xF;
 			WLen = buf[1] & 0x3FF;
 			HasC = ((buf[1] >> 10) & 0x3) != 0;
-			Console.WriteLine($"X {XCount} A {ACount} B {BCount} wl {WLen} hc {HasC}");
 			DomainHandle = 0;
 			DomainCommand = 0;
 			var pos = 2U;
@@ -204,7 +203,7 @@ namespace AnchorNX {
 		public void Move(uint offset, uint handle) {
 			var buf = (uint*) Buffer;
 			if(IsDomainObject) {
-				Console.WriteLine($"Sending back domain object 0x{handle:X}");
+				IpcInterface.Log($"Sending back domain object 0x{handle:X}");
 				buf[(SfcoOffset >> 2) + 4 + offset] = handle;
 			} else
 				buf[3 + CopyCount + offset] = handle;
@@ -255,6 +254,9 @@ namespace AnchorNX {
 	}
 	
 	public abstract class IpcInterface {
+		static readonly Logger Logger = new("IpcInterface");
+		public static Action<string> Log = Logger.Log;
+		
 		public uint Handle;
 		public bool IsDomainObject;
 		IpcInterface DomainOwner;
@@ -285,8 +287,8 @@ namespace AnchorNX {
 		}
 
 		public async Task<(uint Result, bool closeHandle)> SyncMessage(Memory<byte> ipcBuf, ulong xBaseAddr) {
-			ipcBuf.Span.Hexdump();
-			Console.WriteLine($"Is domain object? {IsDomainObject}");
+			ipcBuf.Span.Hexdump(Logger);
+			Log($"Is domain object? {IsDomainObject}");
 			var incoming = new IncomingMessage(ipcBuf, IsDomainObject);
 			var outgoing = new OutgoingMessage(ipcBuf, new[] { xBaseAddr, xBaseAddr + 0x1000 }, IsDomainObject, incoming);
 			var ret = 0xF601U;
@@ -294,7 +296,7 @@ namespace AnchorNX {
 			var target = this;
 			if(IsDomainObject && incoming.DomainHandle != ThisHandle && incoming.Type is 4 or 6)
 				target = (IpcInterface) DomainHandles[incoming.DomainHandle];
-			Console.WriteLine($"Got message: domain command {incoming.DomainCommand} domain handle {incoming.DomainHandle:X} command id {incoming.CommandId} type {incoming.Type}");
+			Log($"Got message: domain command {incoming.DomainCommand} domain handle {incoming.DomainHandle:X} command id {incoming.CommandId} type {incoming.Type}");
 			if(!IsDomainObject || incoming.DomainCommand == 1 || incoming.Type is 2 or 5 or 7)
 				switch(incoming.Type) {
 					case 2:
@@ -304,7 +306,7 @@ namespace AnchorNX {
 						break;
 					case 4:
 					case 6:
-						Console.WriteLine($"IPC command {incoming.CommandId} for {target}");
+						Log($"IPC command {incoming.CommandId} for {target}");
 						await target.Dispatch(incoming, outgoing);
 						ret = 0;
 						break;
@@ -312,13 +314,13 @@ namespace AnchorNX {
 					case 7:
 						switch(incoming.CommandId) {
 							case 0: // ConvertSessionToDomain
-								Console.WriteLine("Converting session to domain...");
+								Log("Converting session to domain...");
 								outgoing.Initialize(0, 0, 4);
 								IsDomainObject = true;
 								outgoing.SetData(8, ThisHandle);
 								break;
 							case 2: // CloneCurrentObject
-								Console.WriteLine("Duplicating session");
+								Log("Duplicating session");
 								var (rc, server, client) = await Box.HvcProxy.CreateSession();
 								outgoing.IsDomainObject = false;
 								outgoing.Initialize(1, 0, 0);
@@ -346,7 +348,7 @@ namespace AnchorNX {
 			else
 				switch(incoming.DomainCommand) {
 					case 2:
-						Console.WriteLine($"Closing domain handle 0x{incoming.DomainHandle:X}");
+						Log($"Closing domain handle 0x{incoming.DomainHandle:X}");
 						DomainHandles.Remove(incoming.DomainHandle);
 						outgoing.Initialize(0, 0, 0);
 						outgoing.ErrCode = 0;
@@ -357,7 +359,7 @@ namespace AnchorNX {
 				}
 			if(ret == 0)
 				outgoing.Bake();
-			ipcBuf.Span.Hexdump();
+			ipcBuf.Span.Hexdump(Logger);
 			return (ret, closeHandle);
 		}
 	}

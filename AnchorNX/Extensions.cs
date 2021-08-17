@@ -7,29 +7,31 @@ namespace AnchorNX {
 		public static bool HasBit(this uint v, int bit) => (v & (1U << bit)) != 0;
 		
 		const string Printable = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-[]{}`~!@#$%^&*()-=\\|;:'\",./<>?";
-		public static void Hexdump(this Span<byte> _buffer) {
+		public static void Hexdump(this Span<byte> _buffer, Logger logger) {
 			var buffer = _buffer.ToArray();
-			for(var i = 0; i < buffer.Length; i += 16) {
-				Console.Write($"{i:X4} | ");
-				for(var j = 0; j < 16; ++j) {
-					Console.Write(i + j >= buffer.Length ? $"   " : $"{buffer[i + j]:X2} ");
-					if(j == 7) Console.Write(" ");
+			logger.WithLock(() => {
+				for(var i = 0; i < buffer.Length; i += 16) {
+					Console.Write($"{i:X4} | ");
+					for(var j = 0; j < 16; ++j) {
+						Console.Write(i + j >= buffer.Length ? $"   " : $"{buffer[i + j]:X2} ");
+						if(j == 7) Console.Write(" ");
+					}
+					Console.Write("| ");
+					for(var j = 0; j < 16; ++j) {
+						if(i + j >= buffer.Length) break;
+						Console.Write(Printable.Contains((char) buffer[i + j]) ? new string((char) buffer[i + j], 1) : ".");
+						if(j == 7) Console.Write(" ");
+					}
+					Console.WriteLine();
 				}
-				Console.Write("| ");
-				for(var j = 0; j < 16; ++j) {
-					if(i + j >= buffer.Length) break;
-					Console.Write(Printable.Contains((char) buffer[i + j]) ? new string((char) buffer[i + j], 1) : ".");
-					if(j == 7) Console.Write(" ");
-				}
-				Console.WriteLine();
-			}
-			Console.WriteLine($"{buffer.Length:X4}");
+				Console.WriteLine($"{buffer.Length:X4}");
+			});
 		}
 
 		public static Span<U> As<T, U>(this Span<T> span) where T : struct where U : struct =>
 			MemoryMarshal.Cast<T, U>(span);
 
-		public static void Debug(this string message) => Console.WriteLine($"DEBUG: {message}");
+		public static void Debug(this string message, Action<string> log) => log(message);
 
 		public static Memory<TTo> Cast<TFrom, TTo>(this Memory<TFrom> from)
 			where TFrom : unmanaged

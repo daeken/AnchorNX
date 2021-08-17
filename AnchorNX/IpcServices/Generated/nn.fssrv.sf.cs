@@ -1,6 +1,7 @@
 #pragma warning disable 169, 465
 using System;
 using System.Threading.Tasks;
+#pragma warning disable 1998
 
 namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	public enum FileSystemType : uint {
@@ -538,28 +539,28 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		}
 		
 		public virtual Nn.Fssrv.Sf.IFileSystem OpenFileSystem(Nn.Fssrv.Sf.FileSystemType filesystem_type, Buffer<byte> _1) => throw new NotImplementedException();
-		public virtual void SetCurrentProcess(ulong _0, ulong _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.SetCurrentProcess [1]".Debug();
+		public virtual void SetCurrentProcess(ulong _0, ulong _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.SetCurrentProcess [1]".Debug(Log);
 		public virtual Nn.Fssrv.Sf.IFileSystem OpenDataFileSystemByCurrentProcess() => throw new NotImplementedException();
 		public virtual Nn.Fssrv.Sf.IFileSystem OpenFileSystemWithPatch(Nn.Fssrv.Sf.FileSystemType filesystem_type, ulong id) => throw new NotImplementedException();
 		public virtual Nn.Fssrv.Sf.IFileSystem OpenFileSystemWithId(Nn.Fssrv.Sf.FileSystemType filesystem_type, ulong tid, Buffer<byte> _2) => throw new NotImplementedException();
 		public virtual Nn.Fssrv.Sf.IFileSystem OpenDataFileSystemByApplicationId(ulong u64) => throw new NotImplementedException();
 		public virtual Nn.Fssrv.Sf.IFileSystem OpenBisFileSystem(Nn.Fssrv.Sf.Partition partitionId, Buffer<byte> _1) => throw new NotImplementedException();
 		public virtual Nn.Fssrv.Sf.IStorage OpenBisStorage(Nn.Fssrv.Sf.Partition partitionId) => throw new NotImplementedException();
-		public virtual void InvalidateBisCache() => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.InvalidateBisCache [13]".Debug();
+		public virtual void InvalidateBisCache() => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.InvalidateBisCache [13]".Debug(Log);
 		public virtual Nn.Fssrv.Sf.IFileSystem OpenHostFileSystem(Buffer<byte> _0) => throw new NotImplementedException();
 		public virtual Nn.Fssrv.Sf.IFileSystem OpenSdCardFileSystem() => throw new NotImplementedException();
-		public virtual void FormatSdCardFileSystem() => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.FormatSdCardFileSystem [19]".Debug();
-		public virtual void DeleteSaveDataFileSystem(ulong tid) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.DeleteSaveDataFileSystem [21]".Debug();
-		public virtual void CreateSaveDataFileSystem(byte[] save_struct, byte[] ave_create_struct, byte[] _2) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.CreateSaveDataFileSystem [22]".Debug();
-		public virtual void CreateSaveDataFileSystemBySystemSaveDataId(byte[] _0, byte[] _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.CreateSaveDataFileSystemBySystemSaveDataId [23]".Debug();
-		public virtual void RegisterSaveDataFileSystemAtomicDeletion(Buffer<byte> _0) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.RegisterSaveDataFileSystemAtomicDeletion [24]".Debug();
-		public virtual void DeleteSaveDataFileSystemBySaveDataSpaceId(byte _0, ulong _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.DeleteSaveDataFileSystemBySaveDataSpaceId [25]".Debug();
-		public virtual void FormatSdCardDryRun() => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.FormatSdCardDryRun [26]".Debug();
+		public virtual void FormatSdCardFileSystem() => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.FormatSdCardFileSystem [19]".Debug(Log);
+		public virtual void DeleteSaveDataFileSystem(ulong tid) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.DeleteSaveDataFileSystem [21]".Debug(Log);
+		public virtual void CreateSaveDataFileSystem(byte[] save_struct, byte[] ave_create_struct, byte[] _2) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.CreateSaveDataFileSystem [22]".Debug(Log);
+		public virtual void CreateSaveDataFileSystemBySystemSaveDataId(byte[] _0, byte[] _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.CreateSaveDataFileSystemBySystemSaveDataId [23]".Debug(Log);
+		public virtual void RegisterSaveDataFileSystemAtomicDeletion(Buffer<byte> _0) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.RegisterSaveDataFileSystemAtomicDeletion [24]".Debug(Log);
+		public virtual void DeleteSaveDataFileSystemBySaveDataSpaceId(byte _0, ulong _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.DeleteSaveDataFileSystemBySaveDataSpaceId [25]".Debug(Log);
+		public virtual void FormatSdCardDryRun() => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.FormatSdCardDryRun [26]".Debug(Log);
 		public virtual byte IsExFatSupported() => throw new NotImplementedException();
-		public virtual void DeleteSaveDataFileSystemBySaveDataAttribute(byte _0, byte[] _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.DeleteSaveDataFileSystemBySaveDataAttribute [28]".Debug();
+		public virtual void DeleteSaveDataFileSystemBySaveDataAttribute(byte _0, byte[] _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.DeleteSaveDataFileSystemBySaveDataAttribute [28]".Debug(Log);
 		public virtual Nn.Fssrv.Sf.IStorage OpenGameCardStorage(uint _0, uint _1) => throw new NotImplementedException();
 		public virtual Nn.Fssrv.Sf.IFileSystem OpenGameCardFileSystem(uint _0, uint _1) => throw new NotImplementedException();
-		public virtual void ExtendSaveDataFileSystem(byte _0, ulong _1, ulong _2, ulong _3) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.ExtendSaveDataFileSystem [32]".Debug();
+		public virtual void ExtendSaveDataFileSystem(byte _0, ulong _1, ulong _2, ulong _3) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.ExtendSaveDataFileSystem [32]".Debug(Log);
 		public virtual object DeleteCacheStorage(object _0) => throw new NotImplementedException();
 		public virtual object GetCacheStorageSize(object _0) => throw new NotImplementedException();
 		public virtual Nn.Fssrv.Sf.IFileSystem OpenSaveDataFileSystem(byte save_data_space_id, byte[] save_struct) => throw new NotImplementedException();
@@ -567,7 +568,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		public virtual Nn.Fssrv.Sf.IFileSystem OpenReadOnlySaveDataFileSystem(byte save_data_space_id, byte[] save_struct) => throw new NotImplementedException();
 		public virtual void ReadSaveDataFileSystemExtraDataBySaveDataSpaceId(byte _0, ulong _1, Buffer<byte> _2) => throw new NotImplementedException();
 		public virtual void ReadSaveDataFileSystemExtraData(ulong _0, Buffer<byte> _1) => throw new NotImplementedException();
-		public virtual void WriteSaveDataFileSystemExtraData(byte _0, ulong _1, Buffer<byte> _2) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.WriteSaveDataFileSystemExtraData [59]".Debug();
+		public virtual void WriteSaveDataFileSystemExtraData(byte _0, ulong _1, Buffer<byte> _2) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.WriteSaveDataFileSystemExtraData [59]".Debug(Log);
 		public virtual Nn.Fssrv.Sf.ISaveDataInfoReader OpenSaveDataInfoReader() => throw new NotImplementedException();
 		public virtual Nn.Fssrv.Sf.ISaveDataInfoReader OpenSaveDataInfoReaderBySaveDataSpaceId(byte _0) => throw new NotImplementedException();
 		public virtual object OpenCacheStorageList(object _0) => throw new NotImplementedException();
@@ -588,24 +589,24 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		public virtual Nn.Fssrv.Sf.IEventNotifier OpenGameCardDetectionEventNotifier() => throw new NotImplementedException();
 		public virtual object OpenSystemDataUpdateEventNotifier(object _0) => throw new NotImplementedException();
 		public virtual object NotifySystemDataUpdateEvent(object _0) => throw new NotImplementedException();
-		public virtual void SetCurrentPosixTime(ulong time) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.SetCurrentPosixTime [600]".Debug();
+		public virtual void SetCurrentPosixTime(ulong time) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.SetCurrentPosixTime [600]".Debug(Log);
 		public virtual ulong QuerySaveDataTotalSize(ulong _0, ulong _1) => throw new NotImplementedException();
 		public virtual void VerifySaveDataFileSystem(ulong _0, Buffer<byte> _1) => throw new NotImplementedException();
-		public virtual void CorruptSaveDataFileSystem(ulong _0) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.CorruptSaveDataFileSystem [603]".Debug();
-		public virtual void CreatePaddingFile(ulong _0) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.CreatePaddingFile [604]".Debug();
-		public virtual void DeleteAllPaddingFiles() => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.DeleteAllPaddingFiles [605]".Debug();
+		public virtual void CorruptSaveDataFileSystem(ulong _0) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.CorruptSaveDataFileSystem [603]".Debug(Log);
+		public virtual void CreatePaddingFile(ulong _0) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.CreatePaddingFile [604]".Debug(Log);
+		public virtual void DeleteAllPaddingFiles() => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.DeleteAllPaddingFiles [605]".Debug(Log);
 		public virtual void GetRightsId(byte _0, ulong _1, out byte[] rights) => throw new NotImplementedException();
-		public virtual void RegisterExternalKey(byte[] _0, byte[] _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.RegisterExternalKey [607]".Debug();
-		public virtual void UnregisterAllExternalKey() => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.UnregisterAllExternalKey [608]".Debug();
+		public virtual void RegisterExternalKey(byte[] _0, byte[] _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.RegisterExternalKey [607]".Debug(Log);
+		public virtual void UnregisterAllExternalKey() => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.UnregisterAllExternalKey [608]".Debug(Log);
 		public virtual void GetRightsIdByPath(Buffer<byte> _0, out byte[] rights) => throw new NotImplementedException();
 		public virtual void GetRightsIdAndKeyGenerationByPath(Buffer<byte> _0, out byte _1, out byte[] rights) => throw new NotImplementedException();
-		public virtual void SetCurrentPosixTimeWithTimeDifference(uint _0, ulong _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.SetCurrentPosixTimeWithTimeDifference [611]".Debug();
+		public virtual void SetCurrentPosixTimeWithTimeDifference(uint _0, ulong _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.SetCurrentPosixTimeWithTimeDifference [611]".Debug(Log);
 		public virtual ulong GetFreeSpaceSizeForSaveData(byte _0) => throw new NotImplementedException();
 		public virtual void VerifySaveDataFileSystemBySaveDataSpaceId(byte _0, ulong _1, Buffer<byte> _2) => throw new NotImplementedException();
-		public virtual void CorruptSaveDataFileSystemBySaveDataSpaceId(byte _0, ulong _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.CorruptSaveDataFileSystemBySaveDataSpaceId [614]".Debug();
+		public virtual void CorruptSaveDataFileSystemBySaveDataSpaceId(byte _0, ulong _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.CorruptSaveDataFileSystemBySaveDataSpaceId [614]".Debug(Log);
 		public virtual object QuerySaveDataInternalStorageTotalSize(object _0) => throw new NotImplementedException();
-		public virtual void SetSdCardEncryptionSeed(byte[] _0) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.SetSdCardEncryptionSeed [620]".Debug();
-		public virtual void SetSdCardAccessibility(byte _0) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.SetSdCardAccessibility [630]".Debug();
+		public virtual void SetSdCardEncryptionSeed(byte[] _0) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.SetSdCardEncryptionSeed [620]".Debug(Log);
+		public virtual void SetSdCardAccessibility(byte _0) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.SetSdCardAccessibility [630]".Debug(Log);
 		public virtual byte IsSdCardAccessible() => throw new NotImplementedException();
 		public virtual byte IsSignedSystemPartitionOnSdCardValid() => throw new NotImplementedException();
 		public virtual object OpenAccessFailureResolver(object _0) => throw new NotImplementedException();
@@ -614,18 +615,18 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		public virtual object ResolveAccessFailure(object _0) => throw new NotImplementedException();
 		public virtual object AbandonAccessFailure(object _0) => throw new NotImplementedException();
 		public virtual void GetAndClearFileSystemProxyErrorInfo(out byte[] error_info) => throw new NotImplementedException();
-		public virtual void SetBisRootForHost(uint _0, Buffer<byte> _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.SetBisRootForHost [1000]".Debug();
-		public virtual void SetSaveDataSize(ulong _0, ulong _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.SetSaveDataSize [1001]".Debug();
-		public virtual void SetSaveDataRootPath(Buffer<byte> _0) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.SetSaveDataRootPath [1002]".Debug();
-		public virtual void DisableAutoSaveDataCreation() => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.DisableAutoSaveDataCreation [1003]".Debug();
-		public virtual void SetGlobalAccessLogMode(uint mode) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.SetGlobalAccessLogMode [1004]".Debug();
+		public virtual void SetBisRootForHost(uint _0, Buffer<byte> _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.SetBisRootForHost [1000]".Debug(Log);
+		public virtual void SetSaveDataSize(ulong _0, ulong _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.SetSaveDataSize [1001]".Debug(Log);
+		public virtual void SetSaveDataRootPath(Buffer<byte> _0) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.SetSaveDataRootPath [1002]".Debug(Log);
+		public virtual void DisableAutoSaveDataCreation() => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.DisableAutoSaveDataCreation [1003]".Debug(Log);
+		public virtual void SetGlobalAccessLogMode(uint mode) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.SetGlobalAccessLogMode [1004]".Debug(Log);
 		public virtual uint GetGlobalAccessLogMode() => throw new NotImplementedException();
-		public virtual void OutputAccessLogToSdCard(Buffer<byte> log_text) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.OutputAccessLogToSdCard [1006]".Debug();
-		public virtual void RegisterUpdatePartition() => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.RegisterUpdatePartition [1007]".Debug();
+		public virtual void OutputAccessLogToSdCard(Buffer<byte> log_text) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.OutputAccessLogToSdCard [1006]".Debug(Log);
+		public virtual void RegisterUpdatePartition() => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.RegisterUpdatePartition [1007]".Debug(Log);
 		public virtual Nn.Fssrv.Sf.IFileSystem OpenRegisteredUpdatePartition() => throw new NotImplementedException();
 		public virtual void GetAndClearMemoryReportInfo(out byte[] _0) => throw new NotImplementedException();
 		public virtual object Unknown1010(object _0) => throw new NotImplementedException();
-		public virtual void OverrideSaveDataTransferTokenSignVerificationKey(Buffer<byte> _0) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.OverrideSaveDataTransferTokenSignVerificationKey [1100]".Debug();
+		public virtual void OverrideSaveDataTransferTokenSignVerificationKey(Buffer<byte> _0) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.OverrideSaveDataTransferTokenSignVerificationKey [1100]".Debug(Log);
 	}
 	
 	public unsafe partial class IFileSystemProxyForLoader : _Base_IFileSystemProxyForLoader {}
@@ -657,7 +658,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		
 		public virtual Nn.Fssrv.Sf.IFileSystem OpenCodeFileSystem(ulong Tid, Buffer<byte> content_path, Buffer<byte> code_info) => throw new NotImplementedException();
 		public virtual byte IsArchivedProgram(ulong _0) => throw new NotImplementedException();
-		public virtual void SetCurrentProcess(ulong _0, ulong _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxyForLoader.SetCurrentProcess [2]".Debug();
+		public virtual void SetCurrentProcess(ulong _0, ulong _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxyForLoader.SetCurrentProcess [2]".Debug(Log);
 	}
 	
 	public unsafe partial class IProgramRegistry : _Base_IProgramRegistry {}
@@ -689,10 +690,10 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 			}
 		}
 		
-		public virtual void RegisterProgram(byte _0, ulong _1, ulong _2, ulong _3, ulong _4, Buffer<byte> _5, Buffer<byte> _6) => "Stub hit for Nn.Fssrv.Sf.IProgramRegistry.RegisterProgram [0]".Debug();
-		public virtual void UnregisterProgram(ulong _0) => "Stub hit for Nn.Fssrv.Sf.IProgramRegistry.UnregisterProgram [1]".Debug();
-		public virtual void SetCurrentProcess(ulong _0, ulong _1) => "Stub hit for Nn.Fssrv.Sf.IProgramRegistry.SetCurrentProcess [2]".Debug();
-		public virtual void SetEnabledProgramVerification(byte _0) => "Stub hit for Nn.Fssrv.Sf.IProgramRegistry.SetEnabledProgramVerification [256]".Debug();
+		public virtual void RegisterProgram(byte _0, ulong _1, ulong _2, ulong _3, ulong _4, Buffer<byte> _5, Buffer<byte> _6) => "Stub hit for Nn.Fssrv.Sf.IProgramRegistry.RegisterProgram [0]".Debug(Log);
+		public virtual void UnregisterProgram(ulong _0) => "Stub hit for Nn.Fssrv.Sf.IProgramRegistry.UnregisterProgram [1]".Debug(Log);
+		public virtual void SetCurrentProcess(ulong _0, ulong _1) => "Stub hit for Nn.Fssrv.Sf.IProgramRegistry.SetCurrentProcess [2]".Debug(Log);
+		public virtual void SetEnabledProgramVerification(byte _0) => "Stub hit for Nn.Fssrv.Sf.IProgramRegistry.SetEnabledProgramVerification [256]".Debug(Log);
 	}
 	
 	public unsafe partial class IDeviceOperator : _Base_IDeviceOperator {}
@@ -921,33 +922,33 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		public virtual void GetAndClearSdCardErrorInfo(ulong _0, out byte[] _1, out ulong _2, Buffer<byte> _3) => throw new NotImplementedException();
 		public virtual void GetMmcCid(ulong _0, Buffer<byte> cid) => throw new NotImplementedException();
 		public virtual ulong GetMmcSpeedMode() => throw new NotImplementedException();
-		public virtual void EraseMmc(uint _0) => "Stub hit for Nn.Fssrv.Sf.IDeviceOperator.EraseMmc [110]".Debug();
+		public virtual void EraseMmc(uint _0) => "Stub hit for Nn.Fssrv.Sf.IDeviceOperator.EraseMmc [110]".Debug(Log);
 		public virtual ulong GetMmcPartitionSize(uint _0) => throw new NotImplementedException();
 		public virtual uint GetMmcPatrolCount() => throw new NotImplementedException();
 		public virtual void GetAndClearMmcErrorInfo(ulong _0, out byte[] _1, out ulong _2, Buffer<byte> _3) => throw new NotImplementedException();
 		public virtual void GetMmcExtendedCsd(ulong _0, Buffer<byte> _1) => throw new NotImplementedException();
-		public virtual void SuspendMmcPatrol() => "Stub hit for Nn.Fssrv.Sf.IDeviceOperator.SuspendMmcPatrol [115]".Debug();
-		public virtual void ResumeMmcPatrol() => "Stub hit for Nn.Fssrv.Sf.IDeviceOperator.ResumeMmcPatrol [116]".Debug();
+		public virtual void SuspendMmcPatrol() => "Stub hit for Nn.Fssrv.Sf.IDeviceOperator.SuspendMmcPatrol [115]".Debug(Log);
+		public virtual void ResumeMmcPatrol() => "Stub hit for Nn.Fssrv.Sf.IDeviceOperator.ResumeMmcPatrol [116]".Debug(Log);
 		public virtual byte IsGameCardInserted() => throw new NotImplementedException();
-		public virtual void EraseGameCard(uint _0, ulong _1) => "Stub hit for Nn.Fssrv.Sf.IDeviceOperator.EraseGameCard [201]".Debug();
+		public virtual void EraseGameCard(uint _0, ulong _1) => "Stub hit for Nn.Fssrv.Sf.IDeviceOperator.EraseGameCard [201]".Debug(Log);
 		public virtual uint GetGameCardHandle() => throw new NotImplementedException();
 		public virtual void GetGameCardUpdatePartitionInfo(uint _0, out uint version, out ulong tid) => throw new NotImplementedException();
-		public virtual void FinalizeGameCardDriver() => "Stub hit for Nn.Fssrv.Sf.IDeviceOperator.FinalizeGameCardDriver [204]".Debug();
+		public virtual void FinalizeGameCardDriver() => "Stub hit for Nn.Fssrv.Sf.IDeviceOperator.FinalizeGameCardDriver [204]".Debug(Log);
 		public virtual byte GetGameCardAttribute(uint _0) => throw new NotImplementedException();
 		public virtual void GetGameCardDeviceCertificate(uint _0, ulong _1, Buffer<byte> certificate) => throw new NotImplementedException();
 		public virtual void GetGameCardAsicInfo(ulong _0, ulong _1, Buffer<byte> _2, Buffer<byte> _3) => throw new NotImplementedException();
 		public virtual void GetGameCardIdSet(ulong _0, Buffer<byte> _1) => throw new NotImplementedException();
 		public virtual void WriteToGameCard(ulong _0, ulong _1, Buffer<byte> _2) => throw new NotImplementedException();
-		public virtual void SetVerifyWriteEnalbleFlag(byte flag) => "Stub hit for Nn.Fssrv.Sf.IDeviceOperator.SetVerifyWriteEnalbleFlag [210]".Debug();
+		public virtual void SetVerifyWriteEnalbleFlag(byte flag) => "Stub hit for Nn.Fssrv.Sf.IDeviceOperator.SetVerifyWriteEnalbleFlag [210]".Debug(Log);
 		public virtual void GetGameCardImageHash(uint _0, ulong _1, Buffer<byte> image_hash) => throw new NotImplementedException();
 		public virtual void GetGameCardErrorInfo(ulong _0, ulong _1, Buffer<byte> _2, Buffer<byte> error_info) => throw new NotImplementedException();
-		public virtual void EraseAndWriteParamDirectly(ulong _0, Buffer<byte> _1) => "Stub hit for Nn.Fssrv.Sf.IDeviceOperator.EraseAndWriteParamDirectly [213]".Debug();
+		public virtual void EraseAndWriteParamDirectly(ulong _0, Buffer<byte> _1) => "Stub hit for Nn.Fssrv.Sf.IDeviceOperator.EraseAndWriteParamDirectly [213]".Debug(Log);
 		public virtual void ReadParamDirectly(ulong _0, Buffer<byte> _1) => throw new NotImplementedException();
-		public virtual void ForceEraseGameCard() => "Stub hit for Nn.Fssrv.Sf.IDeviceOperator.ForceEraseGameCard [215]".Debug();
+		public virtual void ForceEraseGameCard() => "Stub hit for Nn.Fssrv.Sf.IDeviceOperator.ForceEraseGameCard [215]".Debug(Log);
 		public virtual void GetGameCardErrorInfo2(out byte[] error_info) => throw new NotImplementedException();
 		public virtual void GetGameCardErrorReportInfo(out byte[] error_report_info) => throw new NotImplementedException();
 		public virtual void GetGameCardDeviceId(ulong _0, Buffer<byte> device_id) => throw new NotImplementedException();
-		public virtual void SetSpeedEmulationMode(uint emu_mode) => "Stub hit for Nn.Fssrv.Sf.IDeviceOperator.SetSpeedEmulationMode [300]".Debug();
+		public virtual void SetSpeedEmulationMode(uint emu_mode) => "Stub hit for Nn.Fssrv.Sf.IDeviceOperator.SetSpeedEmulationMode [300]".Debug(Log);
 		public virtual uint GetSpeedEmulationMode() => throw new NotImplementedException();
 		public virtual object SuspendSdmmcControl(object _0) => throw new NotImplementedException();
 		public virtual object ResumeSdmmcControl(object _0) => throw new NotImplementedException();
@@ -1039,9 +1040,9 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		}
 		
 		public virtual void Read(uint _0, ulong offset, ulong size, out ulong out_size, Buffer<byte> out_buf) => throw new NotImplementedException();
-		public virtual void Write(uint _0, ulong offset, ulong size, Buffer<byte> in_buf) => "Stub hit for Nn.Fssrv.Sf.IFile.Write [1]".Debug();
-		public virtual void Flush() => "Stub hit for Nn.Fssrv.Sf.IFile.Flush [2]".Debug();
-		public virtual void SetSize(ulong size) => "Stub hit for Nn.Fssrv.Sf.IFile.SetSize [3]".Debug();
+		public virtual void Write(uint _0, ulong offset, ulong size, Buffer<byte> in_buf) => "Stub hit for Nn.Fssrv.Sf.IFile.Write [1]".Debug(Log);
+		public virtual void Flush() => "Stub hit for Nn.Fssrv.Sf.IFile.Flush [2]".Debug(Log);
+		public virtual void SetSize(ulong size) => "Stub hit for Nn.Fssrv.Sf.IFile.SetSize [3]".Debug(Log);
 		public virtual ulong GetSize() => throw new NotImplementedException();
 		public virtual void OperateRange(uint _0, ulong _1, ulong _2, out byte[] _3) => throw new NotImplementedException();
 	}
@@ -1141,20 +1142,20 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 			}
 		}
 		
-		public virtual void CreateFile(uint mode, ulong size, Buffer<byte> path) => "Stub hit for Nn.Fssrv.Sf.IFileSystem.CreateFile [0]".Debug();
-		public virtual void DeleteFile(Buffer<byte> path) => "Stub hit for Nn.Fssrv.Sf.IFileSystem.DeleteFile [1]".Debug();
-		public virtual void CreateDirectory(Buffer<byte> path) => "Stub hit for Nn.Fssrv.Sf.IFileSystem.CreateDirectory [2]".Debug();
-		public virtual void DeleteDirectory(Buffer<byte> path) => "Stub hit for Nn.Fssrv.Sf.IFileSystem.DeleteDirectory [3]".Debug();
-		public virtual void DeleteDirectoryRecursively(Buffer<byte> path) => "Stub hit for Nn.Fssrv.Sf.IFileSystem.DeleteDirectoryRecursively [4]".Debug();
-		public virtual void RenameFile(Buffer<byte> old_path, Buffer<byte> new_path) => "Stub hit for Nn.Fssrv.Sf.IFileSystem.RenameFile [5]".Debug();
-		public virtual void RenameDirectory(Buffer<byte> old_path, Buffer<byte> new_path) => "Stub hit for Nn.Fssrv.Sf.IFileSystem.RenameDirectory [6]".Debug();
+		public virtual void CreateFile(uint mode, ulong size, Buffer<byte> path) => "Stub hit for Nn.Fssrv.Sf.IFileSystem.CreateFile [0]".Debug(Log);
+		public virtual void DeleteFile(Buffer<byte> path) => "Stub hit for Nn.Fssrv.Sf.IFileSystem.DeleteFile [1]".Debug(Log);
+		public virtual void CreateDirectory(Buffer<byte> path) => "Stub hit for Nn.Fssrv.Sf.IFileSystem.CreateDirectory [2]".Debug(Log);
+		public virtual void DeleteDirectory(Buffer<byte> path) => "Stub hit for Nn.Fssrv.Sf.IFileSystem.DeleteDirectory [3]".Debug(Log);
+		public virtual void DeleteDirectoryRecursively(Buffer<byte> path) => "Stub hit for Nn.Fssrv.Sf.IFileSystem.DeleteDirectoryRecursively [4]".Debug(Log);
+		public virtual void RenameFile(Buffer<byte> old_path, Buffer<byte> new_path) => "Stub hit for Nn.Fssrv.Sf.IFileSystem.RenameFile [5]".Debug(Log);
+		public virtual void RenameDirectory(Buffer<byte> old_path, Buffer<byte> new_path) => "Stub hit for Nn.Fssrv.Sf.IFileSystem.RenameDirectory [6]".Debug(Log);
 		public virtual Nn.Fssrv.Sf.DirectoryEntryType GetEntryType(Buffer<byte> path) => throw new NotImplementedException();
 		public virtual Nn.Fssrv.Sf.IFile OpenFile(uint mode, Buffer<byte> path) => throw new NotImplementedException();
 		public virtual Nn.Fssrv.Sf.IDirectory OpenDirectory(uint filter_flags, Buffer<byte> path) => throw new NotImplementedException();
-		public virtual void Commit() => "Stub hit for Nn.Fssrv.Sf.IFileSystem.Commit [10]".Debug();
+		public virtual void Commit() => "Stub hit for Nn.Fssrv.Sf.IFileSystem.Commit [10]".Debug(Log);
 		public virtual ulong GetFreeSpaceSize(Buffer<byte> path) => throw new NotImplementedException();
 		public virtual ulong GetTotalSpaceSize(Buffer<byte> path) => throw new NotImplementedException();
-		public virtual void CleanDirectoryRecursively(Buffer<byte> path) => "Stub hit for Nn.Fssrv.Sf.IFileSystem.CleanDirectoryRecursively [13]".Debug();
+		public virtual void CleanDirectoryRecursively(Buffer<byte> path) => "Stub hit for Nn.Fssrv.Sf.IFileSystem.CleanDirectoryRecursively [13]".Debug(Log);
 		public virtual void GetFileTimeStampRaw(Buffer<byte> path, out byte[] timestamp) => throw new NotImplementedException();
 		public virtual void QueryEntry(uint _0, Buffer<byte> path, Buffer<byte> _2, Buffer<byte> _3) => throw new NotImplementedException();
 	}
@@ -1228,8 +1229,8 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		
 		public virtual void Unknown0(Buffer<byte> _0) => throw new NotImplementedException();
 		public virtual ulong Unknown1() => throw new NotImplementedException();
-		public virtual void Unknown16(Buffer<byte> _0) => "Stub hit for Nn.Fssrv.Sf.ISaveDataImporter.Unknown16 [16]".Debug();
-		public virtual void Unknown17() => "Stub hit for Nn.Fssrv.Sf.ISaveDataImporter.Unknown17 [17]".Debug();
+		public virtual void Unknown16(Buffer<byte> _0) => "Stub hit for Nn.Fssrv.Sf.ISaveDataImporter.Unknown16 [16]".Debug(Log);
+		public virtual void Unknown17() => "Stub hit for Nn.Fssrv.Sf.ISaveDataImporter.Unknown17 [17]".Debug(Log);
 	}
 	
 	public unsafe partial class ISaveDataInfoReader : _Base_ISaveDataInfoReader {}
@@ -1283,7 +1284,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		}
 		
 		public virtual void Unknown0(Buffer<byte> _0) => throw new NotImplementedException();
-		public virtual void Unknown16(Buffer<byte> _0) => "Stub hit for Nn.Fssrv.Sf.ISaveDataTransferManager.Unknown16 [16]".Debug();
+		public virtual void Unknown16(Buffer<byte> _0) => "Stub hit for Nn.Fssrv.Sf.ISaveDataTransferManager.Unknown16 [16]".Debug(Log);
 		public virtual Nn.Fssrv.Sf.ISaveDataExporter Unknown32(byte _0, ulong _1) => throw new NotImplementedException();
 		public virtual void Unknown64(byte _0, byte[] _1, Buffer<byte> _2, out ulong _3, out Nn.Fssrv.Sf.ISaveDataImporter _4) => throw new NotImplementedException();
 	}
@@ -1330,9 +1331,9 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		}
 		
 		public virtual void Read(ulong offset, ulong length, Buffer<byte> data) => throw new NotImplementedException();
-		public virtual void Write(ulong offset, ulong length, Buffer<byte> data) => "Stub hit for Nn.Fssrv.Sf.IStorage.Write [1]".Debug();
-		public virtual void Flush() => "Stub hit for Nn.Fssrv.Sf.IStorage.Flush [2]".Debug();
-		public virtual void SetSize(ulong size) => "Stub hit for Nn.Fssrv.Sf.IStorage.SetSize [3]".Debug();
+		public virtual void Write(ulong offset, ulong length, Buffer<byte> data) => "Stub hit for Nn.Fssrv.Sf.IStorage.Write [1]".Debug(Log);
+		public virtual void Flush() => "Stub hit for Nn.Fssrv.Sf.IStorage.Flush [2]".Debug(Log);
+		public virtual void SetSize(ulong size) => "Stub hit for Nn.Fssrv.Sf.IStorage.SetSize [3]".Debug(Log);
 		public virtual ulong GetSize() => throw new NotImplementedException();
 		public virtual void OperateRange(uint _0, ulong _1, ulong _2, out byte[] _3) => throw new NotImplementedException();
 	}

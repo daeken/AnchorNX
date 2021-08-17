@@ -12,6 +12,9 @@ namespace AnchorNX {
 	}
 	
 	public class Core {
+		static readonly Logger Logger = new("Core");
+		static Action<string> Log = Logger.Log;
+		
 		static readonly ThreadLocal<Core> CoreTls = new();
 		public static Core Current => CoreTls.Value;
 		public static int CurrentId => Current?.Id ?? -1;
@@ -72,17 +75,14 @@ namespace AnchorNX {
 			}).Start();
 		}
 
-		static string Foo = "FOO";
-
 		public unsafe void Run() {
 			try {
 				while(true) {
 					if(Box.Initialized && !HookedInterrupts) {
 						HookedInterrupts = true;
-						Console.WriteLine($"VBAR_EL1: {Cpu[SysReg.VBAR_EL1]:X}");
 						var vbar = Cpu[SysReg.VBAR_EL1];
 						var hea = vbar - 0x60800 + 0xA1320;
-						Console.WriteLine($"HEA: {hea:X}");
+						Log($"HEA: {hea:X}");
 						var syn = VirtMem.GetSpan<uint>(hea, Cpu);
 						syn[0] = 0xd4000022;
 					}
@@ -93,24 +93,12 @@ namespace AnchorNX {
 						Interrupt = false;
 						Cpu.IrqPending = true;
 						interrupted = true;
-						Console.WriteLine("Sent interrupt to guest");
 					}
 
-					lock(Foo) {
-						Console.WriteLine($"Core {Id} running from {Cpu.PC:X} -- Irq: {Cpu.IrqPending}");
-						/*var span = VirtMem.GetSpan<byte>(Cpu.PC, Cpu);
-						for(var i = 0; i < 16; ++i) {
-							Console.Write($"{span[i]:X2} ");
-						}
-	
-						Console.WriteLine();*/
-					}
+					Log($"Core {Id} running from {Cpu.PC:X} -- Irq: {Cpu.IrqPending}");
 
 					var exit = Cpu.Run();
-					lock(Foo) {
-						Console.WriteLine(
-							$"Core {CurrentId} Exited from {Cpu.PC:X} ! {exit.Reason} {exit.Syndrome:X} 0x{VirtMem.Translate(Cpu.PC, Cpu):X}");
-					}
+					Log($"Core {CurrentId} Exited from {Cpu.PC:X} ! {exit.Reason} {exit.Syndrome:X} 0x{VirtMem.Translate(Cpu.PC, Cpu):X}");
 
 					if(Terminated) return;
 
@@ -120,34 +108,34 @@ namespace AnchorNX {
 							var far = exit.VirtualAddress;
 							var pfar = exit.PhysicalAddress;
 							var ec = (ExceptionCode) (esr >> 26);
-							Console.WriteLine($"Exception: {ec}");
+							Log($"Exception: {ec}");
 							switch(ec) {
 								case ExceptionCode.TrappedWf_:
 									if((esr & 1) == 0) {
-										Console.WriteLine("Waiting for interrupt");
 										if(!Interrupt && Box.InterruptController.IsInterruptActive(Id)) {
-											Console.WriteLine("Interrupt actually active; rethrowing");
 											Interrupt = true;
 											break;
 										}
 										while(!Interrupt)
 											Thread.Sleep(1);
-										Console.WriteLine("Resuming!");
 									}
 									Cpu.PC += 4;
 									break;
 								case ExceptionCode.HyperCall:
-									Console.WriteLine($"Got HVC; usermode exception");
-									var hec = VirtMem.GetSpan<HosExceptionContext>(Cpu.X[0], Cpu)[0];
-									for(var i = 0; i < 31; ++i)
-										Console.WriteLine($"X{i}: 0x{hec.X[i]:X}");
-									Console.WriteLine($"SP: 0x{hec.SP:X}");
-									Console.WriteLine($"PC: 0x{hec.PC:X}");
-									var cs = VirtMem.GetSpan<byte>(hec.PC, Cpu);
-									for(var i = 0; i < 16; ++i)
-										Console.Write($"{cs[i]:X2} ");
-									Console.WriteLine();
-									Environment.Exit(0);
+									Logger.WithLock(() => {
+										Log($"Got HVC; usermode exception");
+										var hec = VirtMem.GetSpan<HosExceptionContext>(Cpu.X[0], Cpu)[0];
+										for(var i = 0; i < 31; ++i)
+											Log($"X{i}: 0x{hec.X[i]:X}");
+										Log($"SP: 0x{hec.SP:X}");
+										Log($"PC: 0x{hec.PC:X}");
+										Log("Instruction data:");
+										var cs = VirtMem.GetSpan<byte>(hec.PC, Cpu);
+										for(var i = 0; i < 16; ++i)
+											Console.Write($"{cs[i]:X2} ");
+										Console.WriteLine();
+										Environment.Exit(0);
+									});
 									break;
 								case ExceptionCode.MonitorCall:
 									var smc = (int) (esr & 0xFFFF);
@@ -163,17 +151,15 @@ namespace AnchorNX {
 									var crm = (uint) (esr >> 1) & 0b1111;
 									var write = (esr & 1) == 0;
 
-									Console.WriteLine($"{op0} {op2} {op1} {crn} {rt} {crm}");
-
 									switch (op0, op2, op1, crn, crm) {
 										case (0b11, 0b001, 0b011, 0b1110, 0b0000): // CNTPCT_EL0
 											if(write) throw new NotImplementedException();
 											var cntpct = Cpu.X[rt] = CntPct;
-											Console.WriteLine($"CntPct: 0x{cntpct:X}");
+											//Log($"CntPct: 0x{cntpct:X}");
 											break;
 										case (0b11, 0b001, 0b011, 0b1110, 0b0010): // CNTP_CTL_EL0
 											if(!write) throw new NotImplementedException();
-											Console.WriteLine($"CNTP_CTL_EL0 write: 0x{Cpu.X[rt]:X}");
+											//Log($"CNTP_CTL_EL0 write: 0x{Cpu.X[rt]:X}");
 											var val = Cpu.X[rt];
 											TimerInterruptEnabled = (val & 1) != 0;
 											break;
@@ -182,7 +168,7 @@ namespace AnchorNX {
 												CntpCval = Cpu.X[rt];
 											else
 												Cpu.X[rt] = CntpCval;
-											Console.WriteLine($"CNTP_CVAL_EL0 {(write ? "write" : "read")}: 0x{CntpCval:X}");
+											//Log($"CNTP_CVAL_EL0 {(write ? "write" : "read")}: 0x{CntpCval:X}");
 											break;
 										case (0b10, 0b100, 0b000, 0b0001, 0b0000): // OSLAR_EL1
 											lock(OSLock)
@@ -193,7 +179,7 @@ namespace AnchorNX {
 											break;
 										default:
 											var mspan = VirtMem.GetSpan<byte>(Cpu.PC, Cpu);
-											Console.WriteLine($"MSR/MRS: {op0} {op2} {op1} {crn} {crm}");
+											Log($"MSR/MRS: {op0} {op2} {op1} {crn} {crm}");
 											throw new NotImplementedException(
 												$"Unhandled MSR/MRS: {mspan[0]:X2} {mspan[1]:X2} {mspan[2]:X2} {mspan[3]:X2}");
 									}
@@ -246,11 +232,10 @@ namespace AnchorNX {
 
 							break;
 						case ExitReason.Canceled:
-							Console.WriteLine("Cancelled");
-							if(interrupted) {
-								Console.WriteLine("Rethrowing interrupt");
+							/*if(interrupted) {
+								Log("Rethrowing interrupt");
 								//Interrupt = true;
-							}
+							}*/
 							break;
 						default:
 							throw new NotImplementedException($"Unhandled exit {exit.Reason}");
@@ -260,13 +245,16 @@ namespace AnchorNX {
 				foreach(var core in Box.Cores)
 					core.Terminate();
 				Thread.Sleep(1000);
-				Console.WriteLine($"Core {CurrentId} threw an exception: {e}");
-				Console.WriteLine($"Last PC: 0x{Cpu.PC:X}");
-				var span = VirtMem.GetSpan<byte>(Cpu.PC, Cpu);
-				for(var i = 0; i < 16; ++i) {
-					Console.Write($"{span[i]:X2} ");
-				}
-				Console.WriteLine();
+				Logger.WithLock(() => {
+					Log($"Core {CurrentId} threw an exception: {e}");
+					Log($"Last PC: 0x{Cpu.PC:X}");
+					Log("Instruction data: ");
+					var span = VirtMem.GetSpan<byte>(Cpu.PC, Cpu);
+					for(var i = 0; i < 16; ++i) {
+						Console.Write($"{span[i]:X2} ");
+					}
+					Console.WriteLine();
+				});
 			}
 		}
 

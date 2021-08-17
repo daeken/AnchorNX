@@ -3,6 +3,9 @@ using System.Diagnostics;
 
 namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	public partial class IStorage {
+		static readonly Logger Logger = new("IFile");
+		new static Action<string> Log = Logger.Log;
+		
 		readonly LibHac.Fs.IStorage Backing;
 		readonly long Length;
 
@@ -14,7 +17,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		public override void Read(ulong offset, ulong length, Buffer<byte> data) {
 			Backing.Read((long) offset, data).ThrowIfFailure();
 			if((int) length > data.Length) {
-				Console.WriteLine("OVERLENGTH BUFFER!");
+				Log("OVERLENGTH BUFFER!");
 				length = (ulong) data.Length;
 			}
 			
@@ -24,20 +27,20 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 				var pageOff = 0x1000 - ((data.Address + i) & 0xFFF);
 				var tr = (int) Math.Min((ulong) Length - offset, Math.Min(pageOff, length - i));
 				var cs = data.SpanFrom((int) i)[..tr];
-				Console.WriteLine($"Buffer for offset 0x{offset+i:X}");
+				Log($"Buffer for offset 0x{offset+i:X}");
 				Backing.Read((long) (offset + i), cs).ThrowIfFailure();
-				cs.Hexdump();
+				cs.Hexdump(Logger);
 				i += (ulong) Math.Min(tr, cs.Length);
 			}
 
-			Console.WriteLine($"Attempted read into 0x{data.Address:X}, offset 0x{offset:X} size 0x{length:X}");
+			Log($"Attempted read into 0x{data.Address:X}, offset 0x{offset:X} size 0x{length:X}");
 		}
 
-		public override void Write(ulong offset, ulong length, Buffer<byte> data) => "Stub hit for Nn.Fssrv.Sf.IStorage.Write [1]".Debug();
+		public override void Write(ulong offset, ulong length, Buffer<byte> data) => "Stub hit for Nn.Fssrv.Sf.IStorage.Write [1]".Debug(Log);
 		public override void Flush() => Backing.Flush().ThrowIfFailure();
-		public override void SetSize(ulong size) => "Stub hit for Nn.Fssrv.Sf.IStorage.SetSize [3]".Debug();
+		public override void SetSize(ulong size) => "Stub hit for Nn.Fssrv.Sf.IStorage.SetSize [3]".Debug(Log);
 		public override ulong GetSize() {
-			Console.WriteLine($"GetSize: 0x{Length:X}");
+			Log($"GetSize: 0x{Length:X}");
 			return (ulong) Length;
 		}
 

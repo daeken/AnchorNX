@@ -20,10 +20,8 @@ namespace AnchorNX {
 			ElementSize = Marshal.SizeOf<T>();
 		}
 
-		public Span<T> SpanFrom(int offset) {
-			Console.WriteLine($"SpanFrom 0x{Address + (ulong) offset:X}");
-			return VirtMem.GetSpan<T>(Address + (ulong) offset, Core.Current.Cpu)[..((Size - offset) / ElementSize)];
-		}
+		public Span<T> SpanFrom(int offset) =>
+			VirtMem.GetSpan<T>(Address + (ulong) offset, Core.Current.Cpu)[..((Size - offset) / ElementSize)];
 
 		public Buffer<OtherT> As<OtherT>() where OtherT : struct => new(Address, (ulong) Size);
 		public Buffer<OtherT> As<OtherT>(int size) where OtherT : struct => new(Address, (ulong) size);
@@ -40,7 +38,7 @@ namespace AnchorNX {
 			new(buffer.Address + (ulong) (buffer.ElementSize * offset),
 				(ulong) buffer.Size - (ulong) (buffer.ElementSize * offset));
 
-		public void Hexdump() => As<byte>().Span.Hexdump();
+		public void Hexdump(Logger logger) => As<byte>().Span.Hexdump(logger);
 
 		public IEnumerator<T> GetEnumerator() {
 			var count = Size / Marshal.SizeOf<T>();

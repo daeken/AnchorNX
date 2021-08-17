@@ -2,6 +2,9 @@ using System;
 
 namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	public partial class IFile {
+		static readonly Logger Logger = new("IFile");
+		new static Action<string> Log = Logger.Log;
+		
 		readonly LibHac.Fs.Fsa.IFile Backing;
 		readonly long Length;
 		
@@ -16,15 +19,15 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 				var pageOff = 0x1000 - ((out_buf.Address + i) & 0xFFF);
 				var tr = (int) Math.Min((ulong) Length - offset, Math.Min(pageOff, size - i));
 				var cs = out_buf.SpanFrom((int) i)[..tr];
-				Console.WriteLine($"Buffer for offset 0x{offset+i:X}");
+				Log($"Buffer for offset 0x{offset+i:X}");
 				Backing.Read(out var read, (long) (offset + i), cs, new((int) readOption))
 					.ThrowIfFailure();
-				cs.Hexdump();
+				cs.Hexdump(Logger);
 				out_size += (ulong) read;
 				i += (ulong) read;
 			}
 
-			Console.WriteLine($"Attempted read into 0x{out_buf.Address:X}, readoption {readOption} offset 0x{offset:X} size 0x{size:X} -- actually read 0x{out_size:X}");
+			Log($"Attempted read into 0x{out_buf.Address:X}, readoption {readOption} offset 0x{offset:X} size 0x{size:X} -- actually read 0x{out_size:X}");
 		}
 
 		public override void Write(uint writeOption, ulong offset, ulong size, Buffer<byte> in_buf) =>
@@ -35,7 +38,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		public override void SetSize(ulong size) => Backing.SetSize((long) size);
 
 		public override ulong GetSize() {
-			Console.WriteLine($"Size! {Length}");
+			Log($"Size! {Length}");
 			return (ulong) Length;
 		}
 

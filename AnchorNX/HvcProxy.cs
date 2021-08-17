@@ -12,6 +12,9 @@ using IronVisor;
 
 namespace AnchorNX {
 	public class HvcProxy {
+		static readonly Logger Logger = new("Core");
+		static Action<string> Log = Logger.Log;
+		
 		public readonly Memory<byte> SharedMemory;
 		public readonly Memory<uint> SharedMemory32;
 		public readonly Memory<ulong> SharedMemory64;
@@ -87,28 +90,27 @@ namespace AnchorNX {
 				BaseAddr = this[2];
 				IpcBufAddr = this[3];
 				XBufAddr = this[4];
-				Console.WriteLine($"XBuf addr: {XBufAddr:X}");
+				Log($"XBuf addr: {XBufAddr:X}");
 				RecvBufAddr = BaseAddr + 0x11000;
 				var iaddr = VirtMem.Translate(IpcBufAddr, Core.Current.Cpu);
 				var (imem, ioff) = PhysMem.GetMemory(iaddr);
 				IpcMemory = imem.Memory[ioff..(ioff + 0x100)];
-				Console.WriteLine("HvcProxy initialized on HV side; starting processor state machine");
+				Log("HvcProxy initialized on HV side; starting processor state machine");
 				Initialized = true;
 				Processor.MoveNext();
 
 				new Thread(() => {
 					while(true)
 						if(Stopwatch.ElapsedMilliseconds - LastTime > 1000) {
-							Console.WriteLine("Time to initialize boot!");
+							Log("Time to initialize boot!");
 							Thread.Sleep(1000);
-							Console.WriteLine("Starting for real");
+							Log("Starting for real");
 							SendEvent();
 							break;
 						}
 				}).Start();
 			} else {
-				Console.WriteLine("HvcProxy: Awoken; triggering next cycle");
-				Console.WriteLine($"HvcProxy: {ProcessorTask.Status}");
+				Log("Awoken; triggering next cycle");
 				Awoken.Set();
 			}
 
@@ -120,7 +122,6 @@ namespace AnchorNX {
 		}
 
 		async Task SendCommand() {
-			Console.WriteLine("HvcProxy: Sending command???");
 			SendInterrupt();
 			WaitingForWake = true;
 			await Awoken.WaitAsync();
@@ -130,9 +131,9 @@ namespace AnchorNX {
 		// ReSharper disable once UnusedMember.Local
 		async Task Process() {
 			foreach(var name in ServiceMapping.Keys) {
-				Console.WriteLine($"HvcProxy: Attempting to register '{name}'");
+				Log($"Attempting to register '{name}'");
 				var (res, port) = await RegisterService(name, 1000);
-				Console.WriteLine($"HvcProxy: Registering '{name}': {res:X} {port:X}");
+				Log($"Registering '{name}': {res:X} {port:X}");
 				Debug.Assert(res == 0);
 				ServiceHandles[port] = name;
 			}
@@ -144,43 +145,43 @@ namespace AnchorNX {
 				handles.AddRange(ServiceHandles.Keys);
 				handles.AddRange(SessionHandles.Keys);
 				var (res, index) = await WaitSynchronization(handles);
-				Console.WriteLine($"HvcProxy: WaitSynchronization {res:X} {index}");
+				Log($"WaitSynchronization {res:X} {index}");
 				if(res == 0xe401) { // TODO: Unhack.
-					Console.WriteLine($"HvcProxy: Bad handle to waitsync...");
+					Log($"Bad handle to waitsync...");
 					SessionHandles.Clear();
 					continue;
 				}
 				Debug.Assert(res == 0);
 				var handle = handles[index];
 				if(index == 0) { // EventInterrupt
-					Console.WriteLine("HvcProxy: Woken up to start boot2!");
+					Log("Woken up to start boot2!");
 					Debug.Assert(!startedBoot2);
 					startedBoot2 = true;
-					Console.WriteLine("HvcProxy: Clearing interrupt");
+					Log("Clearing interrupt");
 					await ResetSignal(EventInterruptEvent);
-					Console.WriteLine("HvcProxy: Getting pm:shell");
+					Log("Getting pm:shell");
 					var (rc, session) = await GetService("pm:shell");
-					Console.WriteLine($"HvcProxy: Got pm:shell? {rc:X} {session:X}");
+					Log($"Got pm:shell? {rc:X} {session:X}");
 					Debug.Assert(rc == 0);
 					SetupNotifyBootFinished();
 					rc = await SendRequest(session);
-					Console.WriteLine($"HvcProxy: NotifyBootFinished? {rc:X}");
+					Log($"NotifyBootFinished? {rc:X}");
 					Debug.Assert(rc == 0);
 				} else if(ServiceHandles.TryGetValue(handle, out var serviceName)) {
-					Console.WriteLine($"HvcProxy: Pending connection to '{serviceName}'");
+					Log($"Pending connection to '{serviceName}'");
 					var (rc, session) = await AcceptSession(handle);
 					Debug.Assert(rc == 0);
-					Console.WriteLine($"HvcProxy: Got connection! {session:X}");
+					Log($"Got connection! {session:X}");
 					var iface = SessionHandles[session] = ServiceMapping[serviceName]();
 					iface.Handle = session;
 				} else {
 					var iface = SessionHandles[handle];
-					Console.WriteLine($"HvcProxy: Message for session {handle:X} ({iface})");
+					Log($"Message for session {handle:X} ({iface})");
 					uint rc;
 					while(true) {
 						SetupIpcReceive();
 						rc = await Receive(handle);
-						Console.WriteLine($"HvcProxy: Got message? {rc:X} ({iface})");
+						Log($"Got message? {rc:X} ({iface})");
 						switch(rc) {
 							case 0:
 								goto done;
@@ -192,7 +193,7 @@ namespace AnchorNX {
 
 					var (_, closeHandle) = await iface.SyncMessage(IpcMemory, XBufAddr);
 					rc = await Reply(handle);
-					Console.WriteLine($"HvcProxy: Reply sent: {rc:X} (closehandle {closeHandle})");
+					Log($"Reply sent: {rc:X} (closehandle {closeHandle})");
 					Debug.Assert(rc == 0xEA01);
 				}
 
@@ -213,7 +214,7 @@ namespace AnchorNX {
 			var msg = "";
 			var buf = IpcMemory.Span;
 			for(var i = 0; i < 0x100; i += 16) {
-				msg += $"HvcProxy: {i:X4} | ";
+				msg += $"{i:X4} | ";
 				for(var j = 0; j < 16; ++j) {
 					msg += $"{buf[i + j]:X2} ";
 					if(j == 7)
@@ -230,7 +231,7 @@ namespace AnchorNX {
 				}
 				msg += "\n";
 			}
-			Console.WriteLine(msg);
+			Log(msg);
 		}
 
 		async Task<(uint Result, int Index)> WaitSynchronization(List<uint> handles, long timeout = -1) {

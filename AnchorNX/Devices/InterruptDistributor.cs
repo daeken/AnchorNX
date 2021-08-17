@@ -44,8 +44,6 @@ namespace AnchorNX.Devices {
 				var targetList = (value & GICD_SGIR_TARGET_MASK) >> GICD_SGIR_TARGET_SHIFT;
 				var intid = value & GICD_SGIR_INTID_MASK;
 				
-				Console.WriteLine($"Interrupt in flight: targetList {targetList:X} targetListFilter {targetListFilter} intid {intid:X}");
-
 				if(targetListFilter == GICD_SGIR_TARGET_OTHERS_VAL)
 					for(var i = 0; i < 4; ++i) {
 						if(i != Core.CurrentId)
@@ -63,17 +61,17 @@ namespace AnchorNX.Devices {
 		public void SendInterrupt(int core, int intId) => EnqueueInterrupt(core, intId, 0);
 
 		void EnqueueInterrupt(int core, int intId, int sender) {
-			Console.WriteLine($"Attempting to enqueue interrupt on core {core} -- id {intId}");
+			//Log($"Attempting to enqueue interrupt on core {core} -- id {intId}");
 			if(Box.InterruptController.IsInterruptActive(core))
 				Queues[core].Enqueue((intId, sender));
 			else {
-				Console.WriteLine("No interrupt active -- shooting");
+				//Log("No interrupt active -- shooting");
 				Box.InterruptController.SetActiveInterrupt(core, intId, sender);
 			}
 		}
 
 		public void HandleNextInterrupt(int core) {
-			Console.WriteLine($"Handling next interrupt for core {core} -- {Queues[core].Count} in the queue");
+			//Log($"Handling next interrupt for core {core} -- {Queues[core].Count} in the queue");
 			if(Queues[core].TryDequeue(out var next))
 				Box.InterruptController.SetActiveInterrupt(core, next.IntId, next.Sender);
 			else

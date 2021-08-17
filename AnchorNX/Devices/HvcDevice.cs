@@ -3,6 +3,9 @@ using System.Threading;
 
 namespace AnchorNX.Devices {
 	public class HvcDevice : MmioDevice {
+		static readonly Logger Logger = new("HvcProxy"); // TODO: Should this be separate? Who knows.
+		static Action<string> Log = Logger.Log;
+		
 		public override (ulong Start, ulong End) AddressRange => (0x5700_0000, 0x5700_FFFF);
 
 		[Mmio(0x57000000)]
@@ -17,7 +20,7 @@ namespace AnchorNX.Devices {
 				var msg = "";
 				for(var i = 0; tspan[i] != 0; ++i)
 					msg += (char) tspan[i];
-				Console.WriteLine($"HvcProxy message: {msg}");
+				Log($"HvcProxy message: {msg}");
 			}
 		}
 	}

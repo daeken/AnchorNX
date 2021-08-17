@@ -2,6 +2,9 @@ using System;
 
 namespace AnchorNX.Devices {
 	public class Uart : MmioDevice {
+		static readonly Logger Logger = new("Uart");
+		static Action<string> Log = Logger.Log;
+		
 		public override (ulong, ulong) AddressRange => (0x70006000, 0x70006fff);
 		public override bool ZeroFaker => true;
 
@@ -10,10 +13,9 @@ namespace AnchorNX.Devices {
 		[Mmio(0x70006000)]
 		uint ThrDlab_0_0 {
 			set {
-				Console.WriteLine($"UART char: 0x{value & 0xFF}");
 				var ch = (char) (value & 0xFF);
 				if(ch == '\n') {
-					Console.WriteLine($"UART message: '{Buffer.TrimEnd('\r')}'");
+					Log($"Message: '{Buffer.TrimEnd('\r')}'");
 					Buffer = "";
 				} else {
 					Buffer += ch;

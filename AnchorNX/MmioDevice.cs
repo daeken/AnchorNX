@@ -56,6 +56,9 @@ namespace AnchorNX {
 	}
 	
 	public abstract class MmioDevice {
+		static readonly Logger Logger = new("MmioDevice");
+		static Action<string> Log = Logger.Log;
+		
 		public static readonly Dictionary<ulong, MmioDevice> Devices = new();
 		public abstract (ulong Start, ulong End) AddressRange { get; }
 		readonly object[][] Accessors;
@@ -113,7 +116,6 @@ namespace AnchorNX {
 		}
 
 		public bool Get(ulong addr, int sizeIndex, out ulong value) {
-			Console.WriteLine($"Foo? {addr:X}");
 			var offset = (addr - AddressRange.Start) >> sizeIndex;
 			var accessor = Accessors[sizeIndex][offset];
 			switch(accessor) {
@@ -126,7 +128,7 @@ namespace AnchorNX {
 			}
 
 			if(ZeroFaker) {
-				Console.WriteLine($"MMIO device {GetType().Name} returned FAKE value for address 0x{addr:X} with size {8 << sizeIndex}");
+				Log($"MMIO device {GetType().Name} returned FAKE value for address 0x{addr:X} with size {8 << sizeIndex}");
 				value = 0;
 				return true;
 			}
@@ -135,7 +137,6 @@ namespace AnchorNX {
 		}
 
 		public bool Set(ulong addr, int sizeIndex, ulong value) {
-			Console.WriteLine($"Bar? {addr:X}");
 			var offset = (addr - AddressRange.Start) >> sizeIndex;
 			var accessor = Accessors[sizeIndex][offset];
 			switch(accessor) {
@@ -148,7 +149,7 @@ namespace AnchorNX {
 			}
 
 			if(ZeroFaker) {
-				Console.WriteLine($"MMIO device {GetType().Name} handled FAKE write for address 0x{addr:X} with size {8 << sizeIndex} and value 0x{value:X}");
+				Log($"MMIO device {GetType().Name} handled FAKE write for address 0x{addr:X} with size {8 << sizeIndex} and value 0x{value:X}");
 				return true;
 			}
 

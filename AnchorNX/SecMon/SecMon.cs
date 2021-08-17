@@ -4,18 +4,21 @@ using IronVisor;
 
 namespace AnchorNX.SecMon {
 	public class SecMon {
+		static readonly Logger Logger = new("SecMon");
+		static Action<string> Log = Logger.Log;
+		
 		static Random Rng = new(0x_EADBEEF);
 		public void Call(Vcpu cpu, int func) {
-			Console.WriteLine($"SecMon call {func}, 0x{cpu.X[0]:X}");
+			Log($"SecMon call {func}, 0x{cpu.X[0]:X}");
 			switch(func, cpu.X[0]) {
 				case (1, 0xc4000003): // PowerOnCPU
 					cpu.X[0] = 0;
 					var cpuNum = cpu.X[1];
 					var ep = cpu.X[2];
 					var arg = cpu.X[3];
-					Console.WriteLine($"Starting cpu{cpuNum} at 0x{ep:X} with argument 0x{arg:X}");
+					Log($"Starting cpu{cpuNum} at 0x{ep:X} with argument 0x{arg:X}");
 					new Thread(() => {
-						Console.WriteLine($"Cpu started {cpuNum}");
+						Log($"Cpu started {cpuNum}");
 						var core = new Core(ep, arg);
 						core.Run();
 					}).Start();
@@ -55,7 +58,7 @@ namespace AnchorNX.SecMon {
 				case (1, 0xc3000008): // ReadWriteRegister
 					var write = cpu.X[2] != 0;
 					var value = 0UL;
-					Console.WriteLine($"ReadWriteRegister -- {(write ? "write to" : "read from")} 0x{cpu.X[1]:X}");
+					Log($"ReadWriteRegister -- {(write ? "write to" : "read from")} 0x{cpu.X[1]:X}");
 					var success = write
 						? MmioDevice.Write(cpu.X[1], 2, cpu.X[3])
 						: MmioDevice.Read(cpu.X[1], 2, out value);
