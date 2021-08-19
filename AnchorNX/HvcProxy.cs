@@ -8,8 +8,10 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using AnchorNX.IpcServices.Nn.Bluetooth;
 using AnchorNX.IpcServices.Nn.Fssrv.Sf;
 using AnchorNX.IpcServices.Nn.Gpio;
+using AnchorNX.IpcServices.Nn.Timesrv.Detail.Service;
 using IronVisor;
 using MoreLinq.Extensions;
 
@@ -121,6 +123,9 @@ namespace AnchorNX {
 			["fsp-pr"] = () => new IProgramRegistry(), 
 			["fsp-srv"] = () => new IFileSystemProxy(), 
 			["gpio"] = () => new IManager(),
+			["time:u"] = () => new IStaticService(),
+			["time:a"] = () => new IStaticService(),
+			["time:s"] = () => new IStaticService(),
 		};
 
 		public HvcProxy() {
@@ -130,9 +135,8 @@ namespace AnchorNX {
 				"pcie", "pcie:log", // pcie
 				// pcv
 				"bpc", "bpc:r", "bpc:c", "bpc:b", "bpc:w", "pcv", "pcv:arb", "pcv:imm", "clkrst", "clkrst:i", "clkrst:a",
-				"rgltr", "rtc", "time:u", "time:a", "time:s", 
+				"rgltr", "rtc",  
 				"nvdrv", "nvdrv:a", "nvdrv:s", "nvdrv:t", "nvmemp", "nvdrvdbg", "nvgem:c", "nvgem:cd", "nvdbg:d", // NV
-				"dispdrv", // nvflinger
 				// ptm
 				"fan", "psm", "tc", "ts", "pcm", "apm:am", "apm:sys", 
 				"fgm", "fgm:0", "fgm:1", "fgm:2", "fgm:3", "fgm:4", "fgm:5", "fgm:6", "fgm:7", "fgm:8", "fgm:9", 
@@ -145,7 +149,9 @@ namespace AnchorNX {
 				"aud:a", "aud:d", 
 				"wlan:inf", "wlan:lcl", "wlan:lg", "wlan:lga", "wlan:sg", "wlan:soc", "wlan:dtc", // wlan
 				"btdrv", "bt", // bt
+				"btm", "btm:dbg", "btm:sys", "btm:u", // btm
 				"nfc:am", "nfc:mf:u", "nfc:user", "nfc:sys", "nfp:user", "nfp:dbg", "nfp:sys", // nfc
+				"bsd:u", "bsd:s", "bsdcfg", "ethc:c", "ethc:i", "sfdnsres", "nsd:u", "nsd:a", // bsdsockets
 			};
 			fakes.ForEach(name => ServiceMapping[name] = () => new IFake(name));
 			

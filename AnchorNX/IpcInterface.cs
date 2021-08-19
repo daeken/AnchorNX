@@ -67,7 +67,7 @@ namespace AnchorNX {
 		public T GetData<T>(uint offset) => new Span<T>(Buffer + SfciOffset + 8 + offset, Unsafe.SizeOf<T>())[0];
 		public byte[] GetBytes(uint offset, uint size) =>
 			new Span<byte>(Buffer + SfciOffset + 8 + offset, (int) size).ToArray();
-		public void* GetDataPointer(uint offset) => Buffer + SfciOffset + 8 + offset;
+		public Span<T> GetDataSpan<T>(uint offset) where T : unmanaged => new(Buffer + SfciOffset + 8 + offset, 1);
 
 		public static Func<IncomingMessage, object> DataGetter(Type T, uint offset) {
 			switch(Activator.CreateInstance(T)) {
@@ -137,6 +137,10 @@ namespace AnchorNX {
 		public uint GetMove(uint offset) {
 			var buf = (uint*) Buffer;
 			return IsDomainObject ? buf[(SfciOffset >> 2) + 4 + offset] : buf[(MoveOffset >> 2) + offset];
+		}
+
+		public T GetMove<T>(uint offset) where T : IpcInterface {
+			throw new NotImplementedException();
 		}
 		public uint GetCopy(uint offset) => ((uint*) Buffer)[(CopyOffset >> 2) + offset];
 	}
@@ -219,9 +223,9 @@ namespace AnchorNX {
 		
 		public void SetData<T>(uint offset, T value) => 
 			new Span<T>(Buffer + SfcoOffset + 8 + offset + (offset < 8 ? 0 : RealDataOffset), Unsafe.SizeOf<T>())[0] = value;
-		public void* GetDataPointer(uint offset) => Buffer + SfcoOffset + 8 + offset + (offset < 8 ? 0 : RealDataOffset);
+		public Span<T> GetDataSpan<T>(uint offset) where T : unmanaged => new(Buffer + SfcoOffset + 8 + offset + (offset < 8 ? 0 : RealDataOffset), 1);
 		public void SetBytes(uint offset, byte[] data) =>
-			data.CopyTo(new Span<byte>(GetDataPointer(offset), data.Length));
+			data.CopyTo(new Span<byte>(Buffer + SfcoOffset + 8 + offset + (offset < 8 ? 0 : RealDataOffset), data.Length));
 
 		public Buffer<T> GetXBuffer<T>(int index) where T : unmanaged =>
 			new(XBaseAddrs[index], (ulong) XBufSizes[index]);

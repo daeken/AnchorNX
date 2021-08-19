@@ -11,18 +11,19 @@ namespace AnchorNX {
 			packager.Add(File.ReadAllBytes("HvcProxy.kip"));
 			var package2 = packager.BuildPackage2();
 
-			Box.DisabledTitles.Add(0x0100000000000006);
-			Box.DisabledTitles.Add(0x010000000000001D);
-			Box.DisabledTitles.Add(0x010000000000000A);
-			Box.DisabledTitles.Add(0x010000000000001A);
-			Box.DisabledTitles.Add(0x0100000000000019);
-			Box.DisabledTitles.Add(0x010000000000001C);
-			Box.DisabledTitles.Add(0x0100000000000010);
-			Box.DisabledTitles.Add(0x0100000000000013);
-			Box.DisabledTitles.Add(0x0100000000000014);
-			Box.DisabledTitles.Add(0x0100000000000016);
-			Box.DisabledTitles.Add(0x010000000000000B);
-			Box.DisabledTitles.Add(0x0100000000000020);
+			Box.DisabledTitles.Add(0x0100000000000006); // usb
+			Box.DisabledTitles.Add(0x010000000000001D); // pcie
+			Box.DisabledTitles.Add(0x010000000000000A); // bus
+			Box.DisabledTitles.Add(0x010000000000001A); // pcv
+			Box.DisabledTitles.Add(0x0100000000000019); // nvservices
+			Box.DisabledTitles.Add(0x0100000000000010); // ptm
+			Box.DisabledTitles.Add(0x0100000000000013); // hid
+			Box.DisabledTitles.Add(0x0100000000000014); // audio
+			Box.DisabledTitles.Add(0x0100000000000016); // wlan
+			Box.DisabledTitles.Add(0x010000000000000B); // bluetooth
+			Box.DisabledTitles.Add(0x0100000000000012); // bsdsockets
+			Box.DisabledTitles.Add(0x0100000000000020); // nfc
+			Box.DisabledTitles.Add(0x010000000000002A); // btm
 			
 			Box.Vm = new Vm();
 			PhysMem.Map(0x8000_0000, 0x1_0000_0000);

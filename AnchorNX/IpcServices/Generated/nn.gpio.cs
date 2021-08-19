@@ -1,9 +1,12 @@
+#pragma warning disable 169, 465, 1998
 using System;
 using System.Threading.Tasks;
-
+using UltimateOrb;
 namespace AnchorNX.IpcServices.Nn.Gpio {
 	public unsafe partial class IManager : _Base_IManager {}
 	public class _Base_IManager : IpcInterface {
+		static readonly Logger Logger = new("IManager");
+		new static Action<string> Log = Logger.Log;
 		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // Unknown0
@@ -60,8 +63,10 @@ namespace AnchorNX.IpcServices.Nn.Gpio {
 		public virtual void Unknown6(uint _0) => "Stub hit for Nn.Gpio.IManager.Unknown6 [6]".Debug(Log);
 	}
 	
-		public unsafe partial class IPadSession : _Base_IPadSession {}
+	public unsafe partial class IPadSession : _Base_IPadSession {}
 	public class _Base_IPadSession : IpcInterface {
+		static readonly Logger Logger = new("IPadSession");
+		new static Action<string> Log = Logger.Log;
 		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // SetDirection
@@ -177,7 +182,7 @@ namespace AnchorNX.IpcServices.Nn.Gpio {
 		public virtual void ClearInterruptStatus() => "Stub hit for Nn.Gpio.IPadSession.ClearInterruptStatus [7]".Debug(Log);
 		public virtual void SetValue(uint _0) => "Stub hit for Nn.Gpio.IPadSession.SetValue [8]".Debug(Log);
 		public virtual uint GetValue() => throw new NotImplementedException();
-		public virtual object BindInterrupt() => throw new NotImplementedException();
+		public virtual uint BindInterrupt() => throw new NotImplementedException();
 		public virtual void UnbindInterrupt() => "Stub hit for Nn.Gpio.IPadSession.UnbindInterrupt [11]".Debug(Log);
 		public virtual void SetDebounceEnabled(byte _0) => "Stub hit for Nn.Gpio.IPadSession.SetDebounceEnabled [12]".Debug(Log);
 		public virtual byte GetDebounceEnabled() => throw new NotImplementedException();

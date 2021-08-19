@@ -1,8 +1,7 @@
-#pragma warning disable 169, 465
+#pragma warning disable 169, 465, 1998
 using System;
 using System.Threading.Tasks;
-#pragma warning disable 1998
-
+using UltimateOrb;
 namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	public enum FileSystemType : uint {
 		Invalid = 0x0, 
@@ -44,8 +43,10 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		User = 0x1F, 
 	}
 	
-	public partial class IFileSystemProxy : _Base_IFileSystemProxy {}
+	public unsafe partial class IFileSystemProxy : _Base_IFileSystemProxy {}
 	public class _Base_IFileSystemProxy : IpcInterface {
+		static readonly Logger Logger = new("IFileSystemProxy");
+		new static Action<string> Log = Logger.Log;
 		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // OpenFileSystem
@@ -186,7 +187,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 					break;
 				}
 				case 51: { // OpenSaveDataFileSystem
-					var ret = OpenSaveDataFileSystem(im.GetData<byte>(8), im.GetBytes(16, 0x40));
+					var ret = OpenSaveDataFileSystem(im.GetData<byte>(8), im.GetBytes(9, 0x40));
 					om.Initialize(1, 0, 0);
 					om.Move(0, await CreateHandle(ret));
 					break;
@@ -198,7 +199,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 					break;
 				}
 				case 53: { // OpenReadOnlySaveDataFileSystem
-					var ret = OpenReadOnlySaveDataFileSystem(im.GetData<byte>(8), im.GetBytes(16, 0x40));
+					var ret = OpenReadOnlySaveDataFileSystem(im.GetData<byte>(8), im.GetBytes(9, 0x40));
 					om.Initialize(1, 0, 0);
 					om.Move(0, await CreateHandle(ret));
 					break;
@@ -631,6 +632,8 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	
 	public unsafe partial class IFileSystemProxyForLoader : _Base_IFileSystemProxyForLoader {}
 	public class _Base_IFileSystemProxyForLoader : IpcInterface {
+		static readonly Logger Logger = new("IFileSystemProxyForLoader");
+		new static Action<string> Log = Logger.Log;
 		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // OpenCodeFileSystem
@@ -662,7 +665,9 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	}
 	
 	public unsafe partial class IProgramRegistry : _Base_IProgramRegistry {}
-	public unsafe class _Base_IProgramRegistry : IpcInterface {
+	public class _Base_IProgramRegistry : IpcInterface {
+		static readonly Logger Logger = new("IProgramRegistry");
+		new static Action<string> Log = Logger.Log;
 		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // RegisterProgram
@@ -697,7 +702,9 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	}
 	
 	public unsafe partial class IDeviceOperator : _Base_IDeviceOperator {}
-	public unsafe class _Base_IDeviceOperator : IpcInterface {
+	public class _Base_IDeviceOperator : IpcInterface {
+		static readonly Logger Logger = new("IDeviceOperator");
+		new static Action<string> Log = Logger.Log;
 		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // IsSdCardInserted
@@ -955,7 +962,9 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	}
 	
 	public unsafe partial class IDirectory : _Base_IDirectory {}
-	public unsafe class _Base_IDirectory : IpcInterface {
+	public class _Base_IDirectory : IpcInterface {
+		static readonly Logger Logger = new("IDirectory");
+		new static Action<string> Log = Logger.Log;
 		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // Read
@@ -981,6 +990,8 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	
 	public unsafe partial class IEventNotifier : _Base_IEventNotifier {}
 	public class _Base_IEventNotifier : IpcInterface {
+		static readonly Logger Logger = new("IEventNotifier");
+		new static Action<string> Log = Logger.Log;
 		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // GetEventHandle
@@ -994,11 +1005,13 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 			}
 		}
 		
-		public virtual object GetEventHandle() => throw new NotImplementedException();
+		public virtual uint GetEventHandle() => throw new NotImplementedException();
 	}
 	
 	public unsafe partial class IFile : _Base_IFile {}
-	public unsafe class _Base_IFile : IpcInterface {
+	public class _Base_IFile : IpcInterface {
+		static readonly Logger Logger = new("IFile");
+		new static Action<string> Log = Logger.Log;
 		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // Read
@@ -1049,6 +1062,8 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	
 	public unsafe partial class IFileSystem : _Base_IFileSystem {}
 	public class _Base_IFileSystem : IpcInterface {
+		static readonly Logger Logger = new("IFileSystem");
+		new static Action<string> Log = Logger.Log;
 		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // CreateFile
@@ -1161,7 +1176,9 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	}
 	
 	public unsafe partial class ISaveDataExporter : _Base_ISaveDataExporter {}
-	public unsafe class _Base_ISaveDataExporter : IpcInterface {
+	public class _Base_ISaveDataExporter : IpcInterface {
+		static readonly Logger Logger = new("ISaveDataExporter");
+		new static Action<string> Log = Logger.Log;
 		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // Unknown0
@@ -1198,7 +1215,9 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	}
 	
 	public unsafe partial class ISaveDataImporter : _Base_ISaveDataImporter {}
-	public unsafe class _Base_ISaveDataImporter : IpcInterface {
+	public class _Base_ISaveDataImporter : IpcInterface {
+		static readonly Logger Logger = new("ISaveDataImporter");
+		new static Action<string> Log = Logger.Log;
 		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // Unknown0
@@ -1234,7 +1253,9 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	}
 	
 	public unsafe partial class ISaveDataInfoReader : _Base_ISaveDataInfoReader {}
-	public unsafe class _Base_ISaveDataInfoReader : IpcInterface {
+	public class _Base_ISaveDataInfoReader : IpcInterface {
+		static readonly Logger Logger = new("ISaveDataInfoReader");
+		new static Action<string> Log = Logger.Log;
 		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // ReadSaveDataInfo
@@ -1253,6 +1274,8 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	
 	public unsafe partial class ISaveDataTransferManager : _Base_ISaveDataTransferManager {}
 	public class _Base_ISaveDataTransferManager : IpcInterface {
+		static readonly Logger Logger = new("ISaveDataTransferManager");
+		new static Action<string> Log = Logger.Log;
 		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // Unknown0
@@ -1290,7 +1313,9 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	}
 	
 	public unsafe partial class IStorage : _Base_IStorage {}
-	public unsafe class _Base_IStorage : IpcInterface {
+	public class _Base_IStorage : IpcInterface {
+		static readonly Logger Logger = new("IStorage");
+		new static Action<string> Log = Logger.Log;
 		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // Read

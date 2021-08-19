@@ -22,6 +22,7 @@
     <ItemGroup>
       <PackageReference Include="LibHac" Version="0.13.2" />
       <PackageReference Include="morelinq" Version="3.3.2" />
+      <PackageReference Include="UltimateOrb.Core" Version="2.0.0.4-alpha3" />
     </ItemGroup>
 
 </Project>
