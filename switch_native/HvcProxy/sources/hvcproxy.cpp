@@ -69,6 +69,31 @@ void killHvc() {
     messageBox[0] = 1;
 }
 
+#pragma pack(push, 0)
+struct MagicWaiter {
+    uint64_t lastResult, lastIndex, handleCount;
+    Handle notificationEvent, startEvent;
+    Handle notificationEventWrite, startEventWrite;
+    Handle waitList[0x40];
+};
+#pragma pack(pop)
+
+void waitThread(void* arg) {
+    volatile MagicWaiter* waiter = (volatile MagicWaiter*) arg;
+    while(true) {
+        svcWaitSynchronizationSingle(waiter->startEvent, -1);
+        svcClearEvent(waiter->startEvent);
+        do {
+            waiter->lastResult = svcWaitSynchronization((s32*) &waiter->lastIndex, (const Handle*) waiter->waitList, (int) waiter->handleCount, 100000000);
+        } while(waiter->lastResult == 0xea01);
+        log("Triggering from waiter thread");
+        char buf[1024];
+        sprintf(buf, "Waiter thread trigger? %x %i", (Result) waiter->lastResult, (s32) waiter->lastIndex);
+        log(buf);
+        svcSignalEvent(waiter->notificationEventWrite);
+    }
+}
+
 int main(int argc, char **argv) {
     smInitialize();
     log("Starting HvcProxy");
@@ -180,6 +205,23 @@ int main(int argc, char **argv) {
                 wakeHvc();
                 break;
             }
+            case 11: { // Create waiter thread
+                MagicWaiter* waiter = (MagicWaiter*) malloc(sizeof(MagicWaiter));
+                Thread t;
+                svcCreateEvent(&waiter->notificationEventWrite, &waiter->notificationEvent);
+                svcCreateEvent(&waiter->startEventWrite, &waiter->startEvent);
+                waiter->handleCount = 0;
+                threadCreate(&t, waitThread, (void*) waiter, NULL, 0x1000, 0x2C, -2);
+                threadStart(&t);
+                sharedMem[0] = (uint64_t) waiter;
+                wakeHvc();
+                break;
+            }
+            case 12: { // SignalEvent
+                sharedMem[0] = svcSignalEvent((Handle) sharedMem[1]);
+                wakeHvc();
+                break;
+            }
             default: {
                 log("Unknown message! Bailing");
                 return 0;
@@ -187,13 +229,5 @@ int main(int argc, char **argv) {
         }
         log("End of iteration...");
     }
-    log("Loop ended?!");
-
-    /*rc = smRegisterService(&g_port, smEncodeName("foobar"), false, 1000);
-    if(R_FAILED(rc)) {
-        log("Service registration failed!");
-        return 0;
-    }
-    log("Service registration succeeded!");*/
     return 0;
 }

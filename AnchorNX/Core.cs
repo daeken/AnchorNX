@@ -85,7 +85,7 @@ namespace AnchorNX {
 					Log($"Core {Id} running from {Cpu.PC:X} -- Irq: {Cpu.IrqPending}");
 
 					var exit = Cpu.Run();
-					Log($"Core {CurrentId} Exited from {Cpu.PC:X} ! {exit.Reason} {exit.Syndrome:X} 0x{VirtMem.Translate(Cpu.PC, Cpu):X}");
+					Log($"Core {CurrentId} Exited from {Cpu.PC:X}");
 
 					if(Terminated) return;
 
@@ -116,11 +116,29 @@ namespace AnchorNX {
 											Log($"X{i}: 0x{hec.X[i]:X}");
 										Log($"SP: 0x{hec.SP:X}");
 										Log($"PC: 0x{hec.PC:X}");
-										Log("Instruction data:");
+										Log($"TPIDRRO: 0x{Cpu[SysReg.TPIDRRO_EL0]:X}");
+										var t = VirtMem.GetSpan<ulong>(Cpu[SysReg.TPIDRRO_EL0] + 0x1F8, Cpu)[0];
+										t = VirtMem.GetSpan<ulong>(t + 0x1B0, Cpu)[0];
+										Log($"Thread handle: 0x{t:X}");
+										var addr = 0x23B27C + hec.PC - 0x69968;
+										t = VirtMem.GetSpan<ulong>(addr, Cpu)[0];
+										Log($"Mutex? 0x{t:X}");
+										Logger.LogStart("Instruction data: ");
 										var cs = VirtMem.GetSpan<byte>(hec.PC, Cpu);
 										for(var i = 0; i < 16; ++i)
 											Console.Write($"{cs[i]:X2} ");
 										Console.WriteLine();
+										Log("Call stack:");
+										var tos = hec.X[29];
+										for(var i = 0; ; ++i) {
+											try {
+												var stack = VirtMem.GetSpan<ulong>(tos, Cpu);
+												tos = stack[0];
+												Log($"{i}: 0x{stack[1] - 4:X}");
+											} catch(Exception) {
+												break;
+											}
+										}
 										Environment.Exit(0);
 									});
 									break;

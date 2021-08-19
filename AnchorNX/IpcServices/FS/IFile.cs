@@ -19,10 +19,8 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 				var pageOff = 0x1000 - ((out_buf.Address + i) & 0xFFF);
 				var tr = (int) Math.Min((ulong) Length - offset, Math.Min(pageOff, size - i));
 				var cs = out_buf.SpanFrom((int) i)[..tr];
-				Log($"Buffer for offset 0x{offset+i:X}");
 				Backing.Read(out var read, (long) (offset + i), cs, new((int) readOption))
 					.ThrowIfFailure();
-				cs.Hexdump(Logger);
 				out_size += (ulong) read;
 				i += (ulong) read;
 			}

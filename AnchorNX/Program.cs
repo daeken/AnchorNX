@@ -15,6 +15,14 @@ namespace AnchorNX {
 			Box.DisabledTitles.Add(0x010000000000001D);
 			Box.DisabledTitles.Add(0x010000000000000A);
 			Box.DisabledTitles.Add(0x010000000000001A);
+			Box.DisabledTitles.Add(0x0100000000000019);
+			Box.DisabledTitles.Add(0x010000000000001C);
+			Box.DisabledTitles.Add(0x0100000000000010);
+			Box.DisabledTitles.Add(0x0100000000000013);
+			Box.DisabledTitles.Add(0x0100000000000014);
+			Box.DisabledTitles.Add(0x0100000000000016);
+			Box.DisabledTitles.Add(0x010000000000000B);
+			Box.DisabledTitles.Add(0x0100000000000020);
 			
 			Box.Vm = new Vm();
 			PhysMem.Map(0x8000_0000, 0x1_0000_0000);

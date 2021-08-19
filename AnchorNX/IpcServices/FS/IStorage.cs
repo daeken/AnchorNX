@@ -15,9 +15,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		}
 
 		public override void Read(ulong offset, ulong length, Buffer<byte> data) {
-			Backing.Read((long) offset, data).ThrowIfFailure();
 			if((int) length > data.Length) {
-				Log("OVERLENGTH BUFFER!");
 				length = (ulong) data.Length;
 			}
 			
@@ -27,9 +25,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 				var pageOff = 0x1000 - ((data.Address + i) & 0xFFF);
 				var tr = (int) Math.Min((ulong) Length - offset, Math.Min(pageOff, length - i));
 				var cs = data.SpanFrom((int) i)[..tr];
-				Log($"Buffer for offset 0x{offset+i:X}");
 				Backing.Read((long) (offset + i), cs).ThrowIfFailure();
-				cs.Hexdump(Logger);
 				i += (ulong) Math.Min(tr, cs.Length);
 			}
 

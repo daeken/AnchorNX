@@ -51,7 +51,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 				case 0: { // OpenFileSystem
 					var ret = OpenFileSystem(im.GetData<Nn.Fssrv.Sf.FileSystemType>(8), im.GetBuffer<byte>(0x19, 0));
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 1: { // SetCurrentProcess
@@ -62,37 +62,37 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 				case 2: { // OpenDataFileSystemByCurrentProcess
 					var ret = OpenDataFileSystemByCurrentProcess();
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 7: { // OpenFileSystemWithPatch
 					var ret = OpenFileSystemWithPatch(im.GetData<Nn.Fssrv.Sf.FileSystemType>(8), im.GetData<ulong>(16));
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 8: { // OpenFileSystemWithId
 					var ret = OpenFileSystemWithId(im.GetData<Nn.Fssrv.Sf.FileSystemType>(8), im.GetData<ulong>(16), im.GetBuffer<byte>(0x19, 0));
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 9: { // OpenDataFileSystemByApplicationId
 					var ret = OpenDataFileSystemByApplicationId(im.GetData<ulong>(8));
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 11: { // OpenBisFileSystem
 					var ret = OpenBisFileSystem(im.GetData<Nn.Fssrv.Sf.Partition>(8), im.GetBuffer<byte>(0x19, 0));
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 12: { // OpenBisStorage
 					var ret = OpenBisStorage(im.GetData<Nn.Fssrv.Sf.Partition>(8));
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 13: { // InvalidateBisCache
@@ -103,13 +103,13 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 				case 17: { // OpenHostFileSystem
 					var ret = OpenHostFileSystem(im.GetBuffer<byte>(0x19, 0));
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 18: { // OpenSdCardFileSystem
 					var ret = OpenSdCardFileSystem();
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 19: { // FormatSdCardFileSystem
@@ -161,13 +161,13 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 				case 30: { // OpenGameCardStorage
 					var ret = OpenGameCardStorage(im.GetData<uint>(8), im.GetData<uint>(12));
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 31: { // OpenGameCardFileSystem
 					var ret = OpenGameCardFileSystem(im.GetData<uint>(8), im.GetData<uint>(12));
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 32: { // ExtendSaveDataFileSystem
@@ -188,19 +188,19 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 				case 51: { // OpenSaveDataFileSystem
 					var ret = OpenSaveDataFileSystem(im.GetData<byte>(8), im.GetBytes(16, 0x40));
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 52: { // OpenSaveDataFileSystemBySystemSaveDataId
 					var ret = OpenSaveDataFileSystemBySystemSaveDataId(im.GetData<byte>(8), im.GetBytes(16, 0x40));
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 53: { // OpenReadOnlySaveDataFileSystem
 					var ret = OpenReadOnlySaveDataFileSystem(im.GetData<byte>(8), im.GetBytes(16, 0x40));
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 57: { // ReadSaveDataFileSystemExtraDataBySaveDataSpaceId
@@ -221,13 +221,13 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 				case 60: { // OpenSaveDataInfoReader
 					var ret = OpenSaveDataInfoReader();
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 61: { // OpenSaveDataInfoReaderBySaveDataSpaceId
 					var ret = OpenSaveDataInfoReaderBySaveDataSpaceId(im.GetData<byte>(8));
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 62: { // OpenCacheStorageList
@@ -253,13 +253,13 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 				case 80: { // OpenSaveDataMetaFile
 					var ret = OpenSaveDataMetaFile(im.GetData<byte>(8), im.GetData<uint>(12), im.GetBytes(16, 0x40));
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 81: { // OpenSaveDataTransferManager
 					var ret = OpenSaveDataTransferManager();
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 82: { // OpenSaveDataTransferManagerVersion2
@@ -270,55 +270,55 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 				case 100: { // OpenImageDirectoryFileSystem
 					var ret = OpenImageDirectoryFileSystem(im.GetData<uint>(8));
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 110: { // OpenContentStorageFileSystem
 					var ret = OpenContentStorageFileSystem(im.GetData<uint>(8));
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 200: { // OpenDataStorageByCurrentProcess
 					var ret = OpenDataStorageByCurrentProcess();
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 201: { // OpenDataStorageByProgramId
 					var ret = OpenDataStorageByProgramId(im.GetData<ulong>(8));
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 202: { // OpenDataStorageByDataId
 					var ret = await OpenDataStorageByDataId(im.GetData<byte>(8), im.GetData<ulong>(16));
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 203: { // OpenPatchDataStorageByCurrentProcess
 					var ret = OpenPatchDataStorageByCurrentProcess();
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 400: { // OpenDeviceOperator
 					var ret = OpenDeviceOperator();
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 500: { // OpenSdCardDetectionEventNotifier
 					var ret = OpenSdCardDetectionEventNotifier();
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 501: { // OpenGameCardDetectionEventNotifier
 					var ret = OpenGameCardDetectionEventNotifier();
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 510: { // OpenSystemDataUpdateEventNotifier
@@ -514,7 +514,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 				case 1008: { // OpenRegisteredUpdatePartition
 					var ret = OpenRegisteredUpdatePartition();
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 1009: { // GetAndClearMemoryReportInfo
@@ -630,14 +630,14 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	}
 	
 	public unsafe partial class IFileSystemProxyForLoader : _Base_IFileSystemProxyForLoader {}
-	public unsafe class _Base_IFileSystemProxyForLoader : IpcInterface {
+	public class _Base_IFileSystemProxyForLoader : IpcInterface {
 		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // OpenCodeFileSystem
 					var (tid, content_path) = (im.GetData<ulong>(8), im.GetBuffer<byte>(0x19, 0));
 					om.Initialize(1, 0, 0, 0x124);
 					var ret = OpenCodeFileSystem(tid, content_path, om.GetXBuffer<byte>(0));
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 1: { // IsArchivedProgram
@@ -980,13 +980,13 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	}
 	
 	public unsafe partial class IEventNotifier : _Base_IEventNotifier {}
-	public unsafe class _Base_IEventNotifier : IpcInterface {
+	public class _Base_IEventNotifier : IpcInterface {
 		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // GetEventHandle
 					var ret = GetEventHandle();
 					om.Initialize(0, 1, 0);
-					om.Copy(0, CreateHandle(ret, copy: true));
+					om.Copy(0, await CreateHandle(ret, copy: true));
 					break;
 				}
 				default:
@@ -1048,7 +1048,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	}
 	
 	public unsafe partial class IFileSystem : _Base_IFileSystem {}
-	public unsafe class _Base_IFileSystem : IpcInterface {
+	public class _Base_IFileSystem : IpcInterface {
 		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // CreateFile
@@ -1095,13 +1095,13 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 				case 8: { // OpenFile
 					var ret = OpenFile(im.GetData<uint>(8), im.GetBuffer<byte>(0x19, 0));
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 9: { // OpenDirectory
 					var ret = OpenDirectory(im.GetData<uint>(8), im.GetBuffer<byte>(0x19, 0));
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 10: { // Commit
@@ -1252,7 +1252,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 	}
 	
 	public unsafe partial class ISaveDataTransferManager : _Base_ISaveDataTransferManager {}
-	public unsafe class _Base_ISaveDataTransferManager : IpcInterface {
+	public class _Base_ISaveDataTransferManager : IpcInterface {
 		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
 				case 0: { // Unknown0
@@ -1268,14 +1268,14 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 				case 32: { // Unknown32
 					var ret = Unknown32(im.GetData<byte>(8), im.GetData<ulong>(16));
 					om.Initialize(1, 0, 0);
-					om.Move(0, CreateHandle(ret));
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 64: { // Unknown64
 					Unknown64(im.GetData<byte>(8), im.GetBytes(9, 0x10), im.GetBuffer<byte>(0x5, 0), out var _0, out var _1);
 					om.Initialize(1, 0, 8);
 					om.SetData(8, _0);
-					om.Move(0, CreateHandle(_1));
+					om.Move(0, await CreateHandle(_1));
 					break;
 				}
 				default:

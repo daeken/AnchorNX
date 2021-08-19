@@ -253,6 +253,21 @@ namespace AnchorNX {
 		public IpcException(uint code) => Code = code;
 	}
 	
+	public class IpcIgnoreException : Exception {
+	}
+
+	public class IFake : IpcInterface {
+		public readonly string Name;
+		
+		public IFake(string name) =>
+			Name = name;
+
+		public override async Task _Dispatch(IncomingMessage incoming, OutgoingMessage outgoing) {
+			Log($"Attempted dispatch for command {incoming.CommandId} on fake '{Name}'");
+			throw new IpcIgnoreException();
+		}
+	}
+	
 	public abstract class IpcInterface {
 		static readonly Logger Logger = new("IpcInterface");
 		public static Action<string> Log = Logger.Log;
@@ -276,14 +291,21 @@ namespace AnchorNX {
 			}
 		}
 
-		public uint CreateHandle(object obj, bool copy = false) {
-			if(DomainOwner != null) return DomainOwner.CreateHandle(obj);
+		public async Task<uint> CreateHandle(object obj, bool copy = false) {
+			if(DomainOwner != null) return await DomainOwner.CreateHandle(obj);
 			Debug.Assert(!copy);
-			Debug.Assert(IsDomainObject);
-			DomainHandles[DomainHandleIter] = obj;
-			if(obj is IpcInterface ii)
-				ii.DomainOwner = this;
-			return DomainHandleIter++;
+			if(IsDomainObject) {
+				Debug.Assert(IsDomainObject);
+				DomainHandles[DomainHandleIter] = obj;
+				if(obj is IpcInterface ii)
+					ii.DomainOwner = this;
+				return DomainHandleIter++;
+			} else {
+				var (rc, server, client) = await Box.HvcProxy.CreateSession();
+				Debug.Assert(rc == 0);
+				await Box.HvcProxy.AddSession(server, (IpcInterface) obj);
+				return client;
+			}
 		}
 
 		public async Task<(uint Result, bool closeHandle)> SyncMessage(Memory<byte> ipcBuf, ulong xBaseAddr) {
@@ -322,10 +344,12 @@ namespace AnchorNX {
 							case 2: // CloneCurrentObject
 								Log("Duplicating session");
 								var (rc, server, client) = await Box.HvcProxy.CreateSession();
+								Log($"Create Session? {rc:X} -- {server:X} {client:X}");
+								Debug.Assert(rc == 0);
 								outgoing.IsDomainObject = false;
 								outgoing.Initialize(1, 0, 0);
 								outgoing.Move(0, client);
-								Box.HvcProxy.SessionHandles[server] = this;
+								await Box.HvcProxy.AddSession(server, this);
 								break;
 							case 3: // QueryPointerBufferSize
 								outgoing.Initialize(0, 0, 4);

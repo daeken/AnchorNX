@@ -13,15 +13,4 @@
       <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
-    <ItemGroup>
-      <Reference Include="IronVisor, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
-        <HintPath>..\..\IronVisor\IronVisor\bin\Debug\net6.0\IronVisor.dll</HintPath>
-      </Reference>
-    </ItemGroup>
-
-    <ItemGroup>
-      <PackageReference Include="LibHac" Version="0.13.2" />
-      <PackageReference Include="morelinq" Version="3.3.2" />
-    </ItemGroup>
-
 </Project>

@@ -25,7 +25,14 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		public override IFileSystem OpenFileSystemWithId(FileSystemType filesystem_type, ulong tid, Buffer<byte> _2) => throw new NotImplementedException();
 		public override IFileSystem OpenDataFileSystemByApplicationId(ulong u64) => throw new NotImplementedException();
 		public override IFileSystem OpenBisFileSystem(Partition partitionId, Buffer<byte> _1) => throw new NotImplementedException();
-		public override IStorage OpenBisStorage(Partition partitionId) => throw new NotImplementedException();
+		public override IStorage OpenBisStorage(Partition partitionId) {
+			Console.WriteLine($"Attempting to open BIS storage for {partitionId}");
+			return new(new LocalStorage(partitionId switch {
+				Partition.CalibrationBinary => "PRODINFO.img", 
+				_ => throw new NotImplementedException()
+			}, FileAccess.Read));
+		}
+
 		public override void InvalidateBisCache() => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.InvalidateBisCache [13]".Debug(Log);
 		public override IFileSystem OpenHostFileSystem(Buffer<byte> _0) => throw new NotImplementedException();
 		public override IFileSystem OpenSdCardFileSystem() => throw new NotImplementedException();
@@ -52,8 +59,16 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 			Log($"Save app id 0x{saveData.ApplicationId:X}");
 			Log($"Save user id 0x{saveData.UserId0:X} 0x{saveData.UserId1:X}");
 			Log($"Save sys id 0x{saveData.SystemSaveDataId:X}");
-			var sfs = new SaveDataFileSystem(Box.KeySet, new LocalStorage($"/Volumes/NO NAME/save/{saveData.SystemSaveDataId:X16}", FileAccess.Read), IntegrityCheckLevel.ErrorOnInvalid, true);
-			return new(sfs);
+
+			try {
+				var sfs = new SaveDataFileSystem(Box.KeySet,
+					new LocalStorage($"/Volumes/NO NAME/save/{saveData.SystemSaveDataId:X16}", FileAccess.Read),
+					IntegrityCheckLevel.ErrorOnInvalid, true);
+				return new(sfs);
+			} catch(Exception) {
+				Log($"Could not find save");
+				throw new IpcException(0x7D402);
+			}
 		}
 		
 		public override IFileSystem OpenReadOnlySaveDataFileSystem(byte save_data_space_id, byte[] save_struct) => throw new NotImplementedException();

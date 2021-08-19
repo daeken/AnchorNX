@@ -23,5 +23,11 @@ namespace AnchorNX {
 				foreach(var line in message.Split('\n'))
 					Console.WriteLine($"[{Module}] {line}");
 		}
+
+		public void LogStart(string message) {
+			if(Disabled) return;
+			lock(Lock)
+				Console.Write($"[{Module}] {message}");
+		}
 	}
 }

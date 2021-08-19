@@ -4,13 +4,97 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using AnchorNX.IpcServices.Nn.Fssrv.Sf;
+using AnchorNX.IpcServices.Nn.Gpio;
 using IronVisor;
+using MoreLinq.Extensions;
 
 namespace AnchorNX {
+	class WaiterManager {
+		[StructLayout(LayoutKind.Sequential, Pack = 1)]
+		unsafe struct Waiter {
+			public ulong LastResult, LastIndex, HandleCount;
+			public uint NotificationEvent, StartEvent;
+			public uint NotificationEventWrite, StartEventWrite;
+			public fixed uint WaitList[0x40];
+		}
+		
+		public readonly Dictionary<uint, (ulong Address, uint[] WaitList)> Waiters = new();
+		readonly Queue<uint> FreeList = new();
+		public readonly Dictionary<uint, uint> StartHandles = new();
+
+		public async Task AddHandle(uint handle) {
+			var fresh = false;
+			if(FreeList.Count == 0) {
+				var nwaiter = await Box.HvcProxy.CreateWaiterThread();
+				var nwhandle = GetNotifyHandle(nwaiter);
+				Waiters[nwhandle] = (nwaiter, new uint[0x40]);
+				StartHandles[nwhandle] = GetStartHandle(nwaiter);
+				for(var i = 0; i < 0x40; ++i)
+					FreeList.Enqueue(nwhandle);
+				fresh = true;
+			}
+
+			var whandle = FreeList.Dequeue();
+			var waiter = Waiters[whandle];
+
+			AddHandle(waiter, handle);
+			if(fresh)
+				await TriggerStart(whandle);
+		}
+
+		public void RemoveHandle(uint handle) {
+			foreach(var (whandle, (addr, waitlist)) in Waiters) {
+				var index = Array.FindIndex(waitlist, elem => elem == handle);
+				if(index == -1) continue;
+				RemoveHandle((addr, waitlist), index);
+			}
+		}
+
+		public (uint Result, uint Handle) GetState(uint whandle) {
+			var (addr, waitlist) = Waiters[whandle];
+			var waiter = VirtMem.GetSpan<Waiter>(addr, Core.Current.Cpu)[0];
+			var li = (int) (uint) waiter.LastIndex;
+			return ((uint) waiter.LastResult, li < 0x40 ? waitlist[li] : 1);
+		}
+
+		uint GetNotifyHandle(ulong addr) {
+			var waiter = VirtMem.GetSpan<Waiter>(addr, Core.Current.Cpu);
+			return waiter[0].NotificationEvent;
+		}
+
+		uint GetStartHandle(ulong addr) {
+			var waiter = VirtMem.GetSpan<Waiter>(addr, Core.Current.Cpu);
+			return waiter[0].StartEventWrite;
+		}
+
+		unsafe void AddHandle((ulong Address, uint[] WaitList) twaiter, uint handle) {
+			var (addr, waitlist) = twaiter;
+			var waiter = VirtMem.GetSpan<Waiter>(addr, Core.Current.Cpu);
+			var hc = waiter[0].HandleCount;
+			waiter[0].WaitList[hc] = handle;
+			waiter[0].HandleCount++;
+			waitlist[hc] = handle;
+		}
+
+		unsafe void RemoveHandle((ulong Address, uint[] WaitList) twaiter, int index) {
+			var (addr, waitlist) = twaiter;
+			var waiter = VirtMem.GetSpan<Waiter>(addr, Core.Current.Cpu);
+			waiter[0].HandleCount--;
+			for(var i = index; i < 0x3F; ++i) {
+				waiter[0].WaitList[i] = waiter[0].WaitList[i + 1];
+				waitlist[i] = waitlist[i + 1];
+			}
+		}
+
+		public async Task TriggerStart(uint handle) =>
+			await Box.HvcProxy.SignalEvent(StartHandles[handle]);
+	}
+	
 	public class HvcProxy {
 		static readonly Logger Logger = new("Core");
 		static Action<string> Log = Logger.Log;
@@ -25,18 +109,46 @@ namespace AnchorNX {
 		public readonly Dictionary<uint, string> ServiceHandles = new();
 		public readonly Dictionary<uint, IpcInterface> SessionHandles = new();
 		readonly AsyncAutoResetEvent Awoken = new();
+		readonly Dictionary<byte, ulong> LrResolvers = new();
 		bool WaitingForWake;
 		readonly IAsyncStateMachine Processor;
 		readonly Func<Task> TaskGetter;
+		readonly WaiterManager Waiters = new();
 		Task ProcessorTask => TaskGetter();
 
 		readonly Dictionary<string, Func<IpcInterface>> ServiceMapping = new() {
 			["fsp-ldr"] = () => new IFileSystemProxyForLoader(), 
 			["fsp-pr"] = () => new IProgramRegistry(), 
 			["fsp-srv"] = () => new IFileSystemProxy(), 
+			["gpio"] = () => new IManager(),
 		};
 
 		public HvcProxy() {
+			var fakes = new[] {
+				"i2c", "i2c:pcv", "uart", "pwm", "pinmux", "sasbus", "led", // bus
+				"usb:ds", "usb:hs", "usb:hs:a", "usb:pd", "usb:pd:c", "usb:pd:m", "usb:pm", "usb:qdb", "usb:obsv", // usb
+				"pcie", "pcie:log", // pcie
+				// pcv
+				"bpc", "bpc:r", "bpc:c", "bpc:b", "bpc:w", "pcv", "pcv:arb", "pcv:imm", "clkrst", "clkrst:i", "clkrst:a",
+				"rgltr", "rtc", "time:u", "time:a", "time:s", 
+				"nvdrv", "nvdrv:a", "nvdrv:s", "nvdrv:t", "nvmemp", "nvdrvdbg", "nvgem:c", "nvgem:cd", "nvdbg:d", // NV
+				"dispdrv", // nvflinger
+				// ptm
+				"fan", "psm", "tc", "ts", "pcm", "apm:am", "apm:sys", 
+				"fgm", "fgm:0", "fgm:1", "fgm:2", "fgm:3", "fgm:4", "fgm:5", "fgm:6", "fgm:7", "fgm:8", "fgm:9", 
+				"fgm:dbg", "lbl", 
+				// hid
+				"hid", "hid:dbg", "hid:sys", "hid:tmp", "irs", "irs:sys", "ahid:cd", "ahid:hdr", "xcd:sys", "hidbus", 
+				// audio
+				"audout:u", "audin:u", "audrec:u", "auddev", "audren:u", "audout:a", "audin:a", "audrec:a", "audren:a", 
+				"audout:d", "audin:d", "audrec:d", "audren:d", "audctl", "codecctl", "hwopus", "auddebug", 
+				"aud:a", "aud:d", 
+				"wlan:inf", "wlan:lcl", "wlan:lg", "wlan:lga", "wlan:sg", "wlan:soc", "wlan:dtc", // wlan
+				"btdrv", "bt", // bt
+				"nfc:am", "nfc:mf:u", "nfc:user", "nfc:sys", "nfp:user", "nfp:dbg", "nfp:sys", // nfc
+			};
+			fakes.ForEach(name => ServiceMapping[name] = () => new IFake(name));
+			
 			SharedMemory = PhysMem.GetMemory(0x5701_0000).Memory.Memory;
 			SharedMemory32 = SharedMemory.Cast<byte, uint>();
 			SharedMemory64 = SharedMemory.Cast<byte, ulong>();
@@ -137,20 +249,21 @@ namespace AnchorNX {
 
 		// ReSharper disable once UnusedMember.Local
 		async Task Process() {
+			await Waiters.AddHandle(EventInterruptEvent);
+			
 			foreach(var name in ServiceMapping.Keys) {
 				Log($"Attempting to register '{name}'");
 				var (res, port) = await RegisterService(name, 1000);
 				Log($"Registering '{name}': {res:X} {port:X}");
 				Debug.Assert(res == 0);
 				ServiceHandles[port] = name;
+				await Waiters.AddHandle(port);
 			}
 
 			var startedBoot2 = false;
 
 			while(true) {
-				var handles = new List<uint> { EventInterruptEvent };
-				handles.AddRange(ServiceHandles.Keys);
-				handles.AddRange(SessionHandles.Keys);
+				var handles = Waiters.Waiters.Keys.ToList();
 				var (res, index) = await WaitSynchronization(handles);
 				Log($"WaitSynchronization {res:X} {index}");
 				if(res == 0xe401) { // TODO: Unhack.
@@ -159,8 +272,13 @@ namespace AnchorNX {
 					continue;
 				}
 				Debug.Assert(res == 0);
-				var handle = handles[index];
-				if(index == 0) { // EventInterrupt
+				var whandle = handles[index];
+				await ResetSignal(whandle);
+				Console.WriteLine($"Waiter {index} ({whandle:X}) triggered");
+				var (nres, handle) = Waiters.GetState(whandle);
+				Console.WriteLine($"Waiter res {nres:X} -- {handle:X}");
+				Debug.Assert(nres == 0);
+				if(handle == EventInterruptEvent) {
 					Log("Woken up to start boot2!");
 					Debug.Assert(!startedBoot2);
 					startedBoot2 = true;
@@ -180,7 +298,9 @@ namespace AnchorNX {
 					Debug.Assert(rc == 0);
 					Log($"Got connection! {session:X}");
 					var iface = SessionHandles[session] = ServiceMapping[serviceName]();
+					await Waiters.AddHandle(session);
 					iface.Handle = session;
+					Log("Added handle!");
 				} else {
 					var iface = SessionHandles[handle];
 					Log($"Message for session {handle:X} ({iface})");
@@ -192,18 +312,29 @@ namespace AnchorNX {
 						switch(rc) {
 							case 0:
 								goto done;
+							case 0xF601:
+								Log($"Session closed: 0x{handle} ({iface})");
+								SessionHandles.Remove(handle);
+								Waiters.RemoveHandle(handle);
+								goto done;
 							default:
 								throw new NotImplementedException($"Unhandled response for receive: 0x{rc:X}");
 						}
 					}
 					done:
-
-					var (_, closeHandle) = await iface.SyncMessage(IpcMemory, XBufAddr);
-					rc = await Reply(handle);
-					Log($"Reply sent: {rc:X} (closehandle {closeHandle})");
-					Debug.Assert(rc == 0xEA01);
+					if(rc == 0) {
+						try {
+							var (_, closeHandle) = await iface.SyncMessage(IpcMemory, XBufAddr);
+							rc = await Reply(handle);
+							Log($"Reply sent: {rc:X} (closehandle {closeHandle})");
+							Debug.Assert(rc == 0xEA01);
+						} catch(IpcIgnoreException) {
+							Log($"This message should be ignored; just moving on.");
+						}
+					}
 				}
 
+				await Waiters.TriggerStart(whandle);
 				LastTime = Stopwatch.ElapsedMilliseconds;
 			}
 		}
@@ -241,7 +372,7 @@ namespace AnchorNX {
 			Log(msg);
 		}
 
-		async Task<(uint Result, int Index)> WaitSynchronization(List<uint> handles, long timeout = -1) {
+		public async Task<(uint Result, int Index)> WaitSynchronization(List<uint> handles, long timeout = -1) {
 			this[0] = 0;
 			this[1] = (ulong) handles.Count;
 			this[2] = (ulong) timeout;
@@ -315,9 +446,12 @@ namespace AnchorNX {
 		}
 
 		public async Task<(uint Result, ulong Resolver)> OpenLocationResolver(byte storageId) {
+			if(LrResolvers.TryGetValue(storageId, out var res))
+				return (0, res);
 			this[0] = 9;
 			this[1] = storageId;
 			await SendCommand();
+			LrResolvers[storageId] = this[1];
 			return ((uint) this[0], this[1]);
 		}
 
@@ -327,6 +461,24 @@ namespace AnchorNX {
 			this[2] = tid;
 			await SendCommand();
 			return ((uint) this[0], Encoding.ASCII.GetString(SharedMemory.Span[32..(256 + 32)]).Split('\0', 2)[0]);
+		}
+
+		public async Task<ulong> CreateWaiterThread() {
+			this[0] = 11;
+			await SendCommand();
+			return this[0];
+		}
+
+		public async Task<uint> SignalEvent(uint handle) {
+			this[0] = 12;
+			this[1] = handle;
+			await SendCommand();
+			return (uint) this[0];
+		}
+
+		public async Task AddSession(uint handle, IpcInterface session) {
+			SessionHandles[handle] = session;
+			await Waiters.AddHandle(handle);
 		}
 
 		void SetupNotifyBootFinished() {

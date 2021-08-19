@@ -8,7 +8,7 @@
     "kernel_capabilities": [
         {
             "type": "handle_table_size",
-            "value": 128
+            "value": 0
         },
         {
             "type": "map", 
