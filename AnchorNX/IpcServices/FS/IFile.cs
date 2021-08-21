@@ -15,6 +15,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 
 		public override void Read(uint readOption, ulong offset, ulong size, out ulong out_size, Buffer<byte> out_buf) {
 			out_size = 0;
+			Log($"Reading from 0x{offset:X} -- 0x{size:X} bytes");
 			for(var i = 0UL; i < size;) {
 				var pageOff = 0x1000 - ((out_buf.Address + i) & 0xFFF);
 				var tr = (int) Math.Min((ulong) Length - offset, Math.Min(pageOff, size - i));
@@ -22,6 +23,11 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 				Backing.Read(out var read, (long) (offset + i), cs, new((int) readOption))
 					.ThrowIfFailure();
 				out_size += (ulong) read;
+				if(read < tr) {
+					Log($"Requested size too large; got 0x{out_size:X} bytes, wanted 0x{size:X}");
+					break;
+				}
+
 				i += (ulong) read;
 			}
 

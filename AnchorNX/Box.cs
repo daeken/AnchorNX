@@ -6,6 +6,7 @@ using System.Threading;
 using AnchorNX.Devices;
 using IronVisor;
 using LibHac.Common.Keys;
+using Ryujinx.Graphics.Gpu;
 
 namespace AnchorNX {
 	public static class Box {
@@ -22,6 +23,8 @@ namespace AnchorNX {
 		public static readonly MemoryController MemoryController = new();
 		public static readonly PowerManagementController PowerManagementController = new();
 		public static readonly Uart Uart = new();
+
+		public static GpuContext Gpu;
 
 		public static readonly HashSet<ulong> DisabledTitles = new();
 	}

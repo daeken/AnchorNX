@@ -61,6 +61,9 @@ namespace AnchorNX {
 				ks.Read(0, kdata).ThrowIfFailure();
 				Console.WriteLine($"Kip: '{name}'");
 			}
+
+			KernelData = File.ReadAllBytes("mesosphere_debug.bin");
+			IniPointerOffset = 0x8;
 		}
 
 		public Package2Packager Add(byte[] kip) {
@@ -86,8 +89,9 @@ namespace AnchorNX {
 			var data = new byte[(int) tlen];
 			Span<byte> dspan = data;
 			KernelData.CopyTo(data, 0);
-			for(var i = 0; i < IniSize; ++i)
-				data[IniOffset + i] = 0xDE;
+			if(IniPointerOffset != 0x8)
+				for(var i = 0; i < IniSize; ++i)
+					data[IniOffset + i] = 0xDE;
 
 			var iniPointer = MemoryMarshal.Cast<byte, uint>(dspan[IniPointerOffset..]);
 			iniPointer[0] = pklen;

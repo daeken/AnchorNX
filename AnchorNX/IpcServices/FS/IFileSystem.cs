@@ -23,7 +23,10 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		public override DirectoryEntryType GetEntryType(Buffer<byte> path) {
 			var fn = Encoding.ASCII.GetString(path.Span).Split('\0', 2)[0];
 			Log($"Attempting to get entry type for '{fn}'");
-			Backing.GetEntryType(out var het, fn.ToU8Span()).ThrowIfFailure();
+			if(Backing.GetEntryType(out var het, fn.ToU8Span()).IsFailure()) {
+				Log($"Path doesn't exist! '{fn}'");
+				throw new IpcException(2U | (1U << 9));
+			}
 			return het switch {
 				LibHac.Fs.DirectoryEntryType.Directory => DirectoryEntryType.Directory, 
 				LibHac.Fs.DirectoryEntryType.File => DirectoryEntryType.File,

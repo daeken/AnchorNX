@@ -3,6 +3,9 @@ using IronVisor;
 
 namespace AnchorNX {
 	public static class VirtMem {
+		static readonly Logger Logger = new("VirtMem");
+		public static Action<string> Log = Logger.Log;
+		
 		static ulong CurTCR = 0;
 		static ulong T1TopMask, T1BottomMask, T0BottomMask;
 		static int T1Size, T0Size;
@@ -10,7 +13,7 @@ namespace AnchorNX {
 
 		public static ulong Translate(ulong addr, Vcpu cpu) {
 			if((cpu[SysReg.SCTLR_EL1] & 1) == 0) return addr;
-			
+
 			var tcr = cpu[SysReg.TCR_EL1];
 			if(tcr != CurTCR) {
 				CurTCR = tcr;

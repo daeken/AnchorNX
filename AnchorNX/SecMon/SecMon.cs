@@ -37,6 +37,11 @@ namespace AnchorNX.SecMon {
 						12 => 0, // KernelConfiguration
 						14 => 0, // QuestState
 						16 => 0, // DeviceUniqueKeyGeneration
+						
+						// Exosphere extensions!
+						65000 => (19UL << 48) | (5UL << 40) | (0xBUL << 32) | (12UL << 24), // ExosphereApiVersion
+						65009 => 115200, // ExosphereLogConfiguration
+						
 						_ => throw new NotImplementedException($"Unhandled configuration option: {cpu.X[1]}")
 					};
 					cpu.X[0] = 0;

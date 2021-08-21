@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Threading;
 using IronVisor;
 
 namespace AnchorNX {
@@ -43,8 +44,9 @@ namespace AnchorNX {
 			var kspan = PhysMem.GetSpan<byte>(0x8006_0000);
 			package2.CopyTo(kspan);
 
-			var core = new Core(0x8006_0000);
-			core.Run();
+			var window = new RenderWindow();
+			new Thread(() => new Core(0x8006_0000).Run()).Start();
+			window.MainLoop();
 		}
 	}
 }

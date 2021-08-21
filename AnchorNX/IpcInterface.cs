@@ -346,6 +346,7 @@ namespace AnchorNX {
 								outgoing.SetData(8, ThisHandle);
 								break;
 							case 2: // CloneCurrentObject
+							case 4: // DuplicateSessionEx
 								Log("Duplicating session");
 								var (rc, server, client) = await Box.HvcProxy.CreateSession();
 								Log($"Create Session? {rc:X} -- {server:X} {client:X}");
@@ -358,12 +359,6 @@ namespace AnchorNX {
 							case 3: // QueryPointerBufferSize
 								outgoing.Initialize(0, 0, 4);
 								outgoing.SetData(8, 0x500U);
-								break;
-							case 4: // DuplicateSessionEx
-								outgoing.IsDomainObject = false;
-								outgoing.Initialize(1, 0, 0);
-								outgoing.Move(0, Handle);
-								outgoing.ErrCode = 0;
 								break;
 							default:
 								throw new NotImplementedException($"Unknown domain command ID: {incoming.CommandId}");

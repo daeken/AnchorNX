@@ -222,6 +222,11 @@ int main(int argc, char **argv) {
                 wakeHvc();
                 break;
             }
+            case 13: { // DumpHandleTable
+                svcKernelDebug(3, 0xFFFFFFFFFFFFFFFF, 0, 0);
+                wakeHvc();
+                break;
+            }
             default: {
                 log("Unknown message! Bailing");
                 return 0;

@@ -22,5 +22,7 @@ namespace AnchorNX.Devices {
 				}
 			}
 		}
+
+		[Mmio(0x70006014)] uint Lsr => 0x40;
 	}
 }

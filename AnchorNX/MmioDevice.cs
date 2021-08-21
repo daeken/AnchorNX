@@ -137,6 +137,7 @@ namespace AnchorNX {
 		}
 
 		public bool Set(ulong addr, int sizeIndex, ulong value) {
+			value = Truncate(value, sizeIndex);
 			var offset = (addr - AddressRange.Start) >> sizeIndex;
 			var accessor = Accessors[sizeIndex][offset];
 			switch(accessor) {
@@ -155,6 +156,14 @@ namespace AnchorNX {
 
 			throw new Exception($"Attempted write to MMIO device {GetType().Name} on address 0x{addr:X} with size {8 << sizeIndex} and value 0x{value:X}");
 		}
+
+		ulong Truncate(ulong value, int sizeIndex) =>
+			sizeIndex switch {
+				0 => value & 0xFF, 
+				1 => value & 0xFFFF, 
+				2 => value & 0xFFFFFFFF, 
+				_ => value
+			};
 
 		public static bool Read(ulong addr, int sizeIndex, out ulong value) {
 			value = 0;

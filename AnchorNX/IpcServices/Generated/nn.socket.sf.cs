@@ -229,6 +229,12 @@ namespace AnchorNX.IpcServices.Nn.Socket.Sf {
 					om.SetData(12, _1);
 					break;
 				}
+				case 33: { // Initialize2
+					var ret = Initialize2(im.GetDataSpan<Nn.Socket.BsdBufferConfig>(8), im.GetData<ulong>(8), im.GetData<ulong>(16), im.Pid);
+					om.Initialize(0, 0, 4);
+					om.SetData(8, ret);
+					break;
+				}
 				default:
 					throw new NotImplementedException($"Unhandled command ID to IClient: {im.CommandId}");
 			}
@@ -265,5 +271,6 @@ namespace AnchorNX.IpcServices.Nn.Socket.Sf {
 		public virtual void GetResourceStatistics(uint _0, uint _1, ulong _2, ulong _3, out int ret, out uint bsd_errno, Buffer<byte> _6) => throw new NotImplementedException();
 		public virtual void RecvMMsg(uint _0, uint _1, uint _2, UInt128 _3, out int ret, out uint bsd_errno, Buffer<byte> _6) => throw new NotImplementedException();
 		public virtual void SendMMsg(uint _0, uint _1, uint _2, Buffer<byte> _3, Buffer<byte> _4, out int ret, out uint bsd_errno) => throw new NotImplementedException();
+		public virtual uint Initialize2(Span<Nn.Socket.BsdBufferConfig> config, ulong pid, ulong memorySize, ulong _4) => throw new NotImplementedException();
 	}
 }

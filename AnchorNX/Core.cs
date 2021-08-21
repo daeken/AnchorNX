@@ -85,7 +85,7 @@ namespace AnchorNX {
 					Log($"Core {Id} running from {Cpu.PC:X} -- Irq: {Cpu.IrqPending}");
 
 					var exit = Cpu.Run();
-					Log($"Core {CurrentId} Exited from {Cpu.PC:X}");
+					Log($"Core {CurrentId} Exited from {Cpu.PC:X} -- Context {Cpu[SysReg.CONTEXTIDR_EL1]:X}");
 
 					if(Terminated) return;
 
@@ -120,9 +120,6 @@ namespace AnchorNX {
 										var t = VirtMem.GetSpan<ulong>(Cpu[SysReg.TPIDRRO_EL0] + 0x1F8, Cpu)[0];
 										t = VirtMem.GetSpan<ulong>(t + 0x1B0, Cpu)[0];
 										Log($"Thread handle: 0x{t:X}");
-										var addr = 0x23B27C + hec.PC - 0x69968;
-										t = VirtMem.GetSpan<ulong>(addr, Cpu)[0];
-										Log($"Mutex? 0x{t:X}");
 										Logger.LogStart("Instruction data: ");
 										var cs = VirtMem.GetSpan<byte>(hec.PC, Cpu);
 										for(var i = 0; i < 16; ++i)
@@ -181,6 +178,11 @@ namespace AnchorNX {
 													OSLock = (Cpu.X[rt] & 1) == 1;
 												else
 													Cpu.X[rt] = (bool) OSLock ? 1UL : 0;
+											break;
+										case (0b11, 0b000, 0b001, 0b1111, 0b0010): // CPUACTLR_EL1
+										case (0b11, 0b001, 0b001, 0b1111, 0b0010): // CPUECTLR_EL1
+											if(!write)
+												Cpu.X[rt] = 0;
 											break;
 										default:
 											var mspan = VirtMem.GetSpan<byte>(Cpu.PC, Cpu);
@@ -248,7 +250,7 @@ namespace AnchorNX {
 				}
 			} catch(Exception e) {
 				foreach(var core in Box.Cores)
-					core.Terminate();
+					core?.Terminate();
 				Thread.Sleep(1000);
 				Logger.WithLock(() => {
 					Log($"Core {CurrentId} threw an exception: {e}");

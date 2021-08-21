@@ -71,6 +71,7 @@
                 "svcGetInfo": "0x29",
                 "svcWaitForAddress": "0x34",
                 "svcSignalToAddress": "0x35",
+                "svcKernelDebug": "0x3C",
                 "svcCreateSession": "0x40",
                 "svcAcceptSession": "0x41",
                 "svcReplyAndReceiveLight": "0x42",

@@ -11,12 +11,18 @@ using System.Threading.Tasks;
 using AnchorNX.IpcServices.Nn.Bluetooth;
 using AnchorNX.IpcServices.Nn.Fssrv.Sf;
 using AnchorNX.IpcServices.Nn.Gpio;
+using AnchorNX.IpcServices.Nn.Socket.Sf;
 using AnchorNX.IpcServices.Nn.Timesrv.Detail.Service;
+using AnchorNX.IpcServices.Nns.Nvdrv;
+using AnchorNX.IpcServices.Time;
 using IronVisor;
 using MoreLinq.Extensions;
 
 namespace AnchorNX {
 	class WaiterManager {
+		static readonly Logger Logger = new("WaiterManager");
+		static Action<string> Log = Logger.Log;
+		
 		[StructLayout(LayoutKind.Sequential, Pack = 1)]
 		unsafe struct Waiter {
 			public ulong LastResult, LastIndex, HandleCount;
@@ -30,6 +36,7 @@ namespace AnchorNX {
 		public readonly Dictionary<uint, uint> StartHandles = new();
 
 		public async Task AddHandle(uint handle) {
+			Log($"Adding handle to WaiterManager: 0x{handle:X}");
 			var fresh = false;
 			if(FreeList.Count == 0) {
 				var nwaiter = await Box.HvcProxy.CreateWaiterThread();
@@ -62,6 +69,16 @@ namespace AnchorNX {
 			var waiter = VirtMem.GetSpan<Waiter>(addr, Core.Current.Cpu)[0];
 			var li = (int) (uint) waiter.LastIndex;
 			return ((uint) waiter.LastResult, li < 0x40 ? waitlist[li] : 1);
+		}
+
+		public unsafe void DumpState(uint whandle) {
+			Log($"Waiter handle 0x{whandle:X}");
+			var (addr, waitlist) = Waiters[whandle];
+			var waiter = VirtMem.GetSpan<Waiter>(addr, Core.Current.Cpu)[0];
+			Log($"Last result 0x{waiter.LastResult:X} Last index 0x{waiter.LastIndex:X}");
+			Log($"Number of handles: 0x{waiter.HandleCount:X}");
+			for(var i = 0; i < (int) waiter.HandleCount; ++i)
+				Log($"Handle #0x{i:X} -- 0x{waitlist[i]:X} -- 0x{waiter.WaitList[i]:X}");
 		}
 
 		uint GetNotifyHandle(ulong addr) {
@@ -98,7 +115,7 @@ namespace AnchorNX {
 	}
 	
 	public class HvcProxy {
-		static readonly Logger Logger = new("Core");
+		static readonly Logger Logger = new("HvcProxy");
 		static Action<string> Log = Logger.Log;
 		
 		public readonly Memory<byte> SharedMemory;
@@ -123,9 +140,16 @@ namespace AnchorNX {
 			["fsp-pr"] = () => new IProgramRegistry(), 
 			["fsp-srv"] = () => new IFileSystemProxy(), 
 			["gpio"] = () => new IManager(),
-			["time:u"] = () => new IStaticService(),
+			/*["time:u"] = () => new IStaticService(),
 			["time:a"] = () => new IStaticService(),
-			["time:s"] = () => new IStaticService(),
+			["time:s"] = () => new IStaticService(),*/
+			["bsd:u"] = () => new IClient(), 
+			["bsd:s"] = () => new IClient(), 
+			["nvdrv"] = () => new INvDrvServices(), 
+			["nvdrv:a"] = () => new INvDrvServices(), 
+			["nvdrv:s"] = () => new INvDrvServices(), 
+			["nvdrv:t"] = () => new INvDrvServices(), 
+			["rtc"] = () => new IRtc(), 
 		};
 
 		public HvcProxy() {
@@ -135,8 +159,8 @@ namespace AnchorNX {
 				"pcie", "pcie:log", // pcie
 				// pcv
 				"bpc", "bpc:r", "bpc:c", "bpc:b", "bpc:w", "pcv", "pcv:arb", "pcv:imm", "clkrst", "clkrst:i", "clkrst:a",
-				"rgltr", "rtc",  
-				"nvdrv", "nvdrv:a", "nvdrv:s", "nvdrv:t", "nvmemp", "nvdrvdbg", "nvgem:c", "nvgem:cd", "nvdbg:d", // NV
+				"rgltr", 
+				"nvmemp", "nvdrvdbg", "nvgem:c", "nvgem:cd", "nvdbg:d", // NV
 				// ptm
 				"fan", "psm", "tc", "ts", "pcm", "apm:am", "apm:sys", 
 				"fgm", "fgm:0", "fgm:1", "fgm:2", "fgm:3", "fgm:4", "fgm:5", "fgm:6", "fgm:7", "fgm:8", "fgm:9", 
@@ -151,7 +175,7 @@ namespace AnchorNX {
 				"btdrv", "bt", // bt
 				"btm", "btm:dbg", "btm:sys", "btm:u", // btm
 				"nfc:am", "nfc:mf:u", "nfc:user", "nfc:sys", "nfp:user", "nfp:dbg", "nfp:sys", // nfc
-				"bsd:u", "bsd:s", "bsdcfg", "ethc:c", "ethc:i", "sfdnsres", "nsd:u", "nsd:a", // bsdsockets
+				"bsdcfg", "ethc:c", "ethc:i", "sfdnsres", "nsd:u", "nsd:a", // bsdsockets
 			};
 			fakes.ForEach(name => ServiceMapping[name] = () => new IFake(name));
 			
@@ -214,25 +238,31 @@ namespace AnchorNX {
 				
 				var vbar = Core.Current.Cpu[SysReg.VBAR_EL1];
 				var hea = vbar - 0x60800 + 0xA1320;
-				var syn = VirtMem.GetSpan<uint>(hea, Core.Current.Cpu);
+				/*var syn = VirtMem.GetSpan<uint>(hea, Core.Current.Cpu);
 				if(syn[0] == 0xD10243FF) {
 					syn[0] = 0xD4000022;
 					Log("Patched usermode exception handler to break to HVC!");
-				}
+				}*/
 
 				Initialized = true;
 				Log("HvcProxy initialized on HV side; starting processor state machine");
 				Processor.MoveNext();
 
 				new Thread(() => {
-					while(true)
-						if(Stopwatch.ElapsedMilliseconds - LastTime > 1000) {
+					var booted = false;
+					while(true) {
+						var time = Stopwatch.ElapsedMilliseconds - LastTime;
+						if(!booted && time > 1000) {
 							Log("Time to initialize boot!");
 							Thread.Sleep(1000);
 							Log("Starting for real");
 							SendEvent();
+							booted = true;
+						} else if(booted && time > 5000) {
+							SendEvent();
 							break;
 						}
+					}
 				}).Start();
 			} else {
 				Log("Awoken; triggering next cycle");
@@ -272,19 +302,23 @@ namespace AnchorNX {
 				var handles = Waiters.Waiters.Keys.ToList();
 				var (res, index) = await WaitSynchronization(handles);
 				Log($"WaitSynchronization {res:X} {index}");
-				if(res == 0xe401) { // TODO: Unhack.
-					Log($"Bad handle to waitsync...");
-					SessionHandles.Clear();
-					continue;
-				}
 				Debug.Assert(res == 0);
 				var whandle = handles[index];
 				await ResetSignal(whandle);
 				Console.WriteLine($"Waiter {index} ({whandle:X}) triggered");
 				var (nres, handle) = Waiters.GetState(whandle);
 				Console.WriteLine($"Waiter res {nres:X} -- {handle:X}");
-				Debug.Assert(nres == 0);
+				if(nres != 0) {
+					Console.WriteLine($"Bad handle in waitlist?");
+					Waiters.DumpState(whandle);
+					await DumpHandleTable();
+					Environment.Exit(0);
+				}
 				if(handle == EventInterruptEvent) {
+					if(startedBoot2) {
+						await DumpHandleTable();
+						continue;
+					}
 					Log("Woken up to start boot2!");
 					Debug.Assert(!startedBoot2);
 					startedBoot2 = true;
@@ -485,6 +519,11 @@ namespace AnchorNX {
 		public async Task AddSession(uint handle, IpcInterface session) {
 			SessionHandles[handle] = session;
 			await Waiters.AddHandle(handle);
+		}
+		
+		async Task DumpHandleTable() {
+			this[0] = 13;
+			await SendCommand();
 		}
 
 		void SetupNotifyBootFinished() {
