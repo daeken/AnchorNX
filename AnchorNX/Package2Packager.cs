@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using LibHac;
 using LibHac.Boot;
 using LibHac.Common.Keys;
+using LibHac.Diag;
 using LibHac.Fs;
 using LibHac.FsSystem;
 using LibHac.Kernel;
@@ -24,6 +25,7 @@ namespace AnchorNX {
 
 		readonly List<string> ToRemove = new();
 		readonly List<byte[]> ToAdd = new();
+		readonly Dictionary<string, List<(int Address, uint Compare, uint Replace)>> TextPatches = new();
 		
 		public Package2Packager(string fn) {
 			var reader = new Package2StorageReader();
@@ -77,9 +79,98 @@ namespace AnchorNX {
 			return this;
 		}
 
+		public Package2Packager TextReplace(string name, ulong addr, uint compare, uint replace) {
+			if(!TextPatches.TryGetValue(name, out var list))
+				list = TextPatches[name] = new();
+			list.Add(((int) addr, compare, replace));
+			return this;
+		}
+
+		byte[] DoReplacements(string name, byte[] data) {
+			if(!TextPatches.TryGetValue(name, out var list)) return data;
+
+			var uar = MemoryMarshal.Cast<byte, uint>(data);
+			var toff = (int) uar[0x20 / 4] + 0x100;
+			var tsiz = (int) uar[0x28 / 4];
+			var text = data[toff..(toff + tsiz)];
+			if(((uar[0x1C / 4] >> 24) & 1) == 1)
+				text = DecompressBlz(text);
+
+			var ut = MemoryMarshal.Cast<byte, uint>(text);
+			foreach(var (addr, comp, repl) in list) {
+				if(ut[addr / 4] == comp)
+					ut[addr / 4] = repl;
+				else
+					Console.WriteLine($"[{name}] Expected value at 0x{addr:X} to be 0x{comp:X} -- got 0x{ut[addr / 4]:X}");
+			}
+			text = MemoryMarshal.Cast<uint, byte>(ut).ToArray();
+
+			if(text.Length > tsiz) {
+				var diff = text.Length - tsiz;
+				var tdat = new byte[data.Length + diff];
+				uar[0x1C / 4] ^= 1U << 24;
+				uar[0x24 / 4] = uar[0x28 / 4] = (uint) text.Length;
+				data = MemoryMarshal.Cast<uint, byte>(uar).ToArray();
+				/*uar[0x30 / 4] += (uint) diff;
+				uar[0x40 / 4] += (uint) diff;
+				uar[0x50 / 4] += (uint) diff;*/
+				Array.Copy(data, 0, tdat, 0, toff);
+				Array.Copy(text, 0, tdat, toff, text.Length);
+				Array.Copy(data, toff + tsiz, tdat, toff + text.Length, data.Length - (toff + tsiz));
+				return tdat;
+			}
+
+			Array.Copy(text, 0, data, toff, text.Length);
+			return data;
+		}
+
+		static byte[] DecompressBlz(byte[] compressed) {
+			var additionalSize = BitConverter.ToInt32(compressed, compressed.Length - 4);
+			var headerSize = BitConverter.ToInt32(compressed, compressed.Length - 8);
+			var totalCompSize = BitConverter.ToInt32(compressed, compressed.Length - 12);
+
+			var decompressed = new byte[totalCompSize + additionalSize];
+
+			var inOffset = totalCompSize - headerSize;
+			var outOffset = totalCompSize + additionalSize;
+
+			while(outOffset > 0) {
+				var control = compressed[--inOffset];
+				for(var i = 0; i < 8; i++) {
+					if((control & 0x80) != 0) {
+						if(inOffset < 2) throw new InvalidDataException("KIP1 decompression out of bounds!");
+
+						inOffset -= 2;
+
+						var segmentValue = BitConverter.ToUInt16(compressed, inOffset);
+						var segmentSize = ((segmentValue >> 12) & 0xF) + 3;
+						var segmentOffset = (segmentValue & 0x0FFF) + 3;
+
+						if(outOffset < segmentSize)
+							segmentSize = outOffset;
+
+						outOffset -= segmentSize;
+
+						for(var j = 0; j < segmentSize; j++)
+							decompressed[outOffset + j] = decompressed[outOffset + j + segmentOffset];
+					} else {
+						if(inOffset < 1) throw new InvalidDataException("KIP1 decompression out of bounds!");
+
+						decompressed[--outOffset] = compressed[--inOffset];
+					}
+
+					control <<= 1;
+					if(outOffset == 0) return decompressed;
+				}
+			}
+
+			return decompressed;
+		}
+
 		public byte[] BuildPackage2() {
 			var kips = Kips.Where(x => !ToRemove.Contains(x.Key))
-				.Select(x => x.Value).Concat(ToAdd).ToList();
+				.Select(x => DoReplacements(x.Key, x.Value))
+				.Concat(ToAdd).ToList();
 			
 			var pklen = (uint) KernelData.Length;
 			if((pklen & 0xFFF) != 0) pklen = (pklen & ~0xFFFU) + 0x1000;

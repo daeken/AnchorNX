@@ -73,6 +73,7 @@ namespace AnchorNX.IpcServices.Nn.Psm {
 				case 12: { // GetBatteryVoltageState
 					var ret = GetBatteryVoltageState();
 					om.Initialize(0, 0, 0);
+					om.SetData(8, ret);
 					break;
 				}
 				case 13: { // GetRawBatteryChargePercentage
@@ -101,6 +102,12 @@ namespace AnchorNX.IpcServices.Nn.Psm {
 					om.Initialize(0, 0, 0);
 					break;
 				}
+				case 18: { // GetBatteryChargeCalibratedEvent
+					var ret = GetBatteryChargeCalibratedEvent();
+					om.Initialize(0, 1, 0);
+					om.Copy(0, await CreateHandle(ret, copy: true));
+					break;
+				}
 				default:
 					throw new NotImplementedException($"Unhandled command ID to IPsmServer: {im.CommandId}");
 			}
@@ -118,12 +125,13 @@ namespace AnchorNX.IpcServices.Nn.Psm {
 		public virtual void DisableEnoughPowerChargeEmulation() => "Stub hit for Nn.Psm.IPsmServer.DisableEnoughPowerChargeEmulation [9]".Debug(Log);
 		public virtual void EnableFastBatteryCharging() => "Stub hit for Nn.Psm.IPsmServer.EnableFastBatteryCharging [10]".Debug(Log);
 		public virtual void DisableFastBatteryCharging() => "Stub hit for Nn.Psm.IPsmServer.DisableFastBatteryCharging [11]".Debug(Log);
-		public virtual object GetBatteryVoltageState() => throw new NotImplementedException();
+		public virtual uint GetBatteryVoltageState() => throw new NotImplementedException();
 		public virtual object GetRawBatteryChargePercentage() => throw new NotImplementedException();
 		public virtual object IsEnoughPowerSupplied() => throw new NotImplementedException();
 		public virtual object GetBatteryAgePercentage() => throw new NotImplementedException();
 		public virtual uint GetBatteryChargeInfoEvent() => throw new NotImplementedException();
 		public virtual object GetBatteryChargeInfoFields() => throw new NotImplementedException();
+		public virtual uint GetBatteryChargeCalibratedEvent() => throw new NotImplementedException();
 	}
 	
 	public unsafe partial class IPsmSession : _Base_IPsmSession {}

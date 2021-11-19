@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using Thread = System.Threading.Thread;
+using Semaphore = Silk.NET.Vulkan.Semaphore;
 
 namespace Ryujinx.Graphics.Vulkan
 {

@@ -22,7 +22,7 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostCtrl {
 		NvFence _previousFailingFence;
 		NvHostSyncpt _syncpointManager;
 		SyncpointWaiterHandle _waiterInformation;
-		//public KEvent Event;
+		public HosEvent Event;
 		public NvFence Fence;
 
 		public object Lock = new();
@@ -33,7 +33,7 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostCtrl {
 
 			State = NvHostEventState.Available;
 
-			//Event = new KEvent(system.KernelContext);
+			Event = Box.EventManager.GetEvent();
 
 			_eventId = eventId;
 
@@ -42,10 +42,7 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostCtrl {
 			ResetFailingState();
 		}
 
-		public void Dispose() {
-			/*Event.ReadableEvent.DecrementReferenceCount();
-			Event.WritableEvent.DecrementReferenceCount();*/
-		}
+		public void Dispose() => Event.Close();
 
 		void ResetFailingState() {
 			_previousFailingFence.Id = NvFence.InvalidSyncPointId;
@@ -59,7 +56,7 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostCtrl {
 
 				State = NvHostEventState.Signaling;
 
-				//if(oldState == NvHostEventState.Waiting) Event.WritableEvent.Signal();
+				if(oldState == NvHostEventState.Waiting) Event.Signal();
 
 				State = NvHostEventState.Signaled;
 			}
@@ -89,7 +86,7 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostCtrl {
 					Signal();
 				}
 
-				//Event.WritableEvent.Clear();
+				Event.Clear();
 			}
 		}
 

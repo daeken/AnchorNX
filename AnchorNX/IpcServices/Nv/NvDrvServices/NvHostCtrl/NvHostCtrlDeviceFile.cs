@@ -71,12 +71,15 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostCtrl {
 					case 0x21:
 						result = CallIoctlMethod<ulong>(EventKill, arguments);
 						break;
+					case 0x22:
+						result = CallIoctlMethod<uint>(MaxFifoChannel, arguments);
+						break;
 				}
 
 			return result;
 		}
 
-		uint QueryEvent(uint eventId) {
+		HosEvent QueryEvent(uint eventId) {
 			lock(_events) {
 				uint eventSlot;
 				uint syncpointId;
@@ -90,27 +93,16 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostCtrl {
 				}
 
 				if(eventSlot >= EventsCount || _events[eventSlot] == null ||
-				   _events[eventSlot].Fence.Id != syncpointId) return 0;
+				   _events[eventSlot].Fence.Id != syncpointId) return null;
 
-				return 0;  //return _events[eventSlot].Event;
+				return _events[eventSlot].Event;
 			}
 		}
 
-		public override NvInternalResult QueryEvent(out int eventHandle, uint eventId) {
-			throw new NotImplementedException();
-			// TODO!
-			/*KEvent targetEvent = QueryEvent(eventId);
+		public override NvInternalResult QueryEvent(out HosEvent eventHandle, uint eventId) {
+			eventHandle = QueryEvent(eventId);
 
-			if(targetEvent != null) {
-				if(Context.Process.HandleTable.GenerateHandle(targetEvent.ReadableEvent, out eventHandle) !=
-				   KernelResult.Success) throw new InvalidOperationException("Out of handles!");
-			} else {
-				eventHandle = 0;
-
-				return NvInternalResult.InvalidInput;
-			}
-
-			return NvInternalResult.Success;*/
+			return eventHandle == null ? NvInternalResult.InvalidInput : NvInternalResult.Success;
 		}
 
 		NvInternalResult SyncptRead(ref NvFence arguments) {
@@ -383,6 +375,11 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostCtrl {
 			if(eventIndex < EventsCount) return _events[eventIndex];
 
 			return null;
+		}
+
+		NvInternalResult MaxFifoChannel(ref uint channel) {
+			channel = 0x60;
+			return NvInternalResult.Success;
 		}
 
 		public override void Close() {

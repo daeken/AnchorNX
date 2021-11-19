@@ -8,18 +8,30 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using AnchorNX.IpcServices.Nn.Audioctrl.Detail;
 using AnchorNX.IpcServices.Nn.Bluetooth;
+using AnchorNX.IpcServices.Nn.Cec;
+using AnchorNX.IpcServices.Nn.Eth.Sf;
 using AnchorNX.IpcServices.Nn.Fssrv.Sf;
 using AnchorNX.IpcServices.Nn.Gpio;
+using AnchorNX.IpcServices.Nn.Psc.Sf;
+using AnchorNX.IpcServices.Nn.Psm;
+using AnchorNX.IpcServices.Nn.Sm.Detail;
 using AnchorNX.IpcServices.Nn.Socket.Sf;
+using AnchorNX.IpcServices.Nn.Ssl.Sf;
 using AnchorNX.IpcServices.Nn.Timesrv.Detail.Service;
+using AnchorNX.IpcServices.Nn.Usb;
+using AnchorNX.IpcServices.Nn.Visrv.Sf;
+using AnchorNX.IpcServices.Nn.Wlan.Detail;
+using AnchorNX.IpcServices.Nns.Hosbinder;
 using AnchorNX.IpcServices.Nns.Nvdrv;
+using AnchorNX.IpcServices.Pcv;
 using AnchorNX.IpcServices.Time;
 using IronVisor;
 using MoreLinq.Extensions;
 
 namespace AnchorNX {
-	class WaiterManager {
+	public class WaiterManager {
 		static readonly Logger Logger = new("WaiterManager");
 		static Action<string> Log = Logger.Log;
 		
@@ -127,12 +139,14 @@ namespace AnchorNX {
 		public uint WakeInterruptEvent, EventInterruptEvent;
 		public readonly Dictionary<uint, string> ServiceHandles = new();
 		public readonly Dictionary<uint, IpcInterface> SessionHandles = new();
+		public readonly Dictionary<uint, Func<Task>> TriggerHandles = new();
+		Dictionary<uint, ulong> PscModuleHandles;
 		readonly AsyncAutoResetEvent Awoken = new();
 		readonly Dictionary<byte, ulong> LrResolvers = new();
 		bool WaitingForWake;
 		readonly IAsyncStateMachine Processor;
 		readonly Func<Task> TaskGetter;
-		readonly WaiterManager Waiters = new();
+		public readonly WaiterManager Waiters = new();
 		Task ProcessorTask => TaskGetter();
 
 		readonly Dictionary<string, Func<IpcInterface>> ServiceMapping = new() {
@@ -145,37 +159,56 @@ namespace AnchorNX {
 			["time:s"] = () => new IStaticService(),*/
 			["bsd:u"] = () => new IClient(), 
 			["bsd:s"] = () => new IClient(), 
+			["nsd:u"] = () => new AnchorNX.IpcServices.Nn.Nsd.Detail.IManager(), 
+			["nsd:a"] = () => new AnchorNX.IpcServices.Nn.Nsd.Detail.IManager(), 
+			["ethc:i"] = () => new IEthInterfaceGroup(),
+			["wlan:inf"] = () => new IInfraManager(), 
 			["nvdrv"] = () => new INvDrvServices(), 
 			["nvdrv:a"] = () => new INvDrvServices(), 
 			["nvdrv:s"] = () => new INvDrvServices(), 
 			["nvdrv:t"] = () => new INvDrvServices(), 
 			["rtc"] = () => new IRtc(), 
+			["ssl"] = () => new ISslService(), 
+			["sm:"] = () => new IUserInterface(), 
+			["sm:m"] = () => new IManagerInterface(), 
+			//["psc:c"] = () => new IPmControl(),
+			["usb:obsv"] = () => new IObserve(),
+			["psm"] = () => new IPsmServer(), 
+			["dispdrv"] = () => new IHOSBinderDriver(), 
+			/*["vi:u"] = () => new IApplicationRootService(), 
+			["vi:s"] = () => new ISystemRootService(), 
+			["vi:m"] = () => new IManagerRootService(), 
+			["cec-mgr"] = () => new ICecManager(), */
+			["clkrst"] = () => new IClkrstManager(), 
+			["audctl"] = () => new IAudioController(), 
 		};
 
 		public HvcProxy() {
 			var fakes = new[] {
 				"i2c", "i2c:pcv", "uart", "pwm", "pinmux", "sasbus", "led", // bus
-				"usb:ds", "usb:hs", "usb:hs:a", "usb:pd", "usb:pd:c", "usb:pd:m", "usb:pm", "usb:qdb", "usb:obsv", // usb
+				"usb:ds", "usb:hs", "usb:hs:a", "usb:pd", "usb:pd:c", "usb:pd:m", "usb:pm", "usb:qdb", // usb
 				"pcie", "pcie:log", // pcie
 				// pcv
 				"bpc", "bpc:r", "bpc:c", "bpc:b", "bpc:w", "pcv", "pcv:arb", "pcv:imm", "clkrst", "clkrst:i", "clkrst:a",
 				"rgltr", 
 				"nvmemp", "nvdrvdbg", "nvgem:c", "nvgem:cd", "nvdbg:d", // NV
 				// ptm
-				"fan", "psm", "tc", "ts", "pcm", "apm:am", "apm:sys", 
+				"fan", "tc", "ts", "pcm", "apm:am", "apm:sys", 
 				"fgm", "fgm:0", "fgm:1", "fgm:2", "fgm:3", "fgm:4", "fgm:5", "fgm:6", "fgm:7", "fgm:8", "fgm:9", 
 				"fgm:dbg", "lbl", 
 				// hid
 				"hid", "hid:dbg", "hid:sys", "hid:tmp", "irs", "irs:sys", "ahid:cd", "ahid:hdr", "xcd:sys", "hidbus", 
 				// audio
 				"audout:u", "audin:u", "audrec:u", "auddev", "audren:u", "audout:a", "audin:a", "audrec:a", "audren:a", 
-				"audout:d", "audin:d", "audrec:d", "audren:d", "audctl", "codecctl", "hwopus", "auddebug", 
+				"audout:d", "audin:d", "audrec:d", "audren:d", "codecctl", "hwopus", "auddebug", 
 				"aud:a", "aud:d", 
-				"wlan:inf", "wlan:lcl", "wlan:lg", "wlan:lga", "wlan:sg", "wlan:soc", "wlan:dtc", // wlan
+				"wlan:lcl", "wlan:lg", "wlan:lga", "wlan:sg", "wlan:soc", "wlan:dtc", // wlan
 				"btdrv", "bt", // bt
 				"btm", "btm:dbg", "btm:sys", "btm:u", // btm
 				"nfc:am", "nfc:mf:u", "nfc:user", "nfc:sys", "nfp:user", "nfp:dbg", "nfp:sys", // nfc
-				"bsdcfg", "ethc:c", "ethc:i", "sfdnsres", "nsd:u", "nsd:a", // bsdsockets
+				"bsdcfg", "ethc:c", "sfdnsres", // bsdsockets
+				//"caps:sc", "caps:ss", "caps:su", "mm:u", "lbl", // vi
+				//"fatal:u", 
 			};
 			fakes.ForEach(name => ServiceMapping[name] = () => new IFake(name));
 			
@@ -287,18 +320,31 @@ namespace AnchorNX {
 		async Task Process() {
 			await Waiters.AddHandle(EventInterruptEvent);
 			
-			foreach(var name in ServiceMapping.Keys) {
-				Log($"Attempting to register '{name}'");
-				var (res, port) = await RegisterService(name, 1000);
-				Log($"Registering '{name}': {res:X} {port:X}");
-				Debug.Assert(res == 0);
-				ServiceHandles[port] = name;
-				await Waiters.AddHandle(port);
+			var (src, smPort) = await ManageNamedPort("sm:", 0x100);
+			Log($"Set up sm: port? 0x{src:X} 0x{smPort:X}");
+			Debug.Assert(src == 0);
+			ServiceHandles[smPort] = "sm:";
+			await Waiters.AddHandle(smPort);
+
+			IUserInterface.AddWaiter("lr", InitializeLr);
+
+			foreach(var (name, gen) in ServiceMapping) {
+				Log($"Registering service '{name}' -- HLE");
+				IUserInterface.HleServices[name] = gen;
 			}
 
+			var pscStarted = false;
 			var startedBoot2 = false;
+			var sfInitialized = false;
 
 			while(true) {
+				await Box.EventManager.Refresh();
+
+				if(!sfInitialized) {
+					sfInitialized = true;
+					//IHOSBinderDriver.Initialize();
+				}
+				
 				var handles = Waiters.Waiters.Keys.ToList();
 				var (res, index) = await WaitSynchronization(handles);
 				Log($"WaitSynchronization {res:X} {index}");
@@ -309,29 +355,53 @@ namespace AnchorNX {
 				var (nres, handle) = Waiters.GetState(whandle);
 				Console.WriteLine($"Waiter res {nres:X} -- {handle:X}");
 				if(nres != 0) {
-					Console.WriteLine($"Bad handle in waitlist?");
+					Console.WriteLine("Bad handle in waitlist?");
 					Waiters.DumpState(whandle);
 					await DumpHandleTable();
 					Environment.Exit(0);
 				}
 				if(handle == EventInterruptEvent) {
-					if(startedBoot2) {
-						await DumpHandleTable();
-						continue;
-					}
-					Log("Woken up to start boot2!");
-					Debug.Assert(!startedBoot2);
-					startedBoot2 = true;
 					Log("Clearing interrupt");
 					await ResetSignal(EventInterruptEvent);
-					Log("Getting pm:shell");
-					var (rc, session) = await GetService("pm:shell");
-					Log($"Got pm:shell? {rc:X} {session:X}");
-					Debug.Assert(rc == 0);
-					SetupNotifyBootFinished();
-					rc = await SendRequest(session);
-					Log($"NotifyBootFinished? {rc:X}");
-					Debug.Assert(rc == 0);
+					if(startedBoot2) {
+						/*if(!pscStarted) {
+							pscStarted = true;
+							PscModuleHandles = await RegisterPmModules(
+								PmModuleId.Audio, 
+								PmModuleId.Bluetooth, 
+								PmModuleId.Btm, 
+								PmModuleId.Ethernet, 
+								PmModuleId.Fs, 
+								PmModuleId.Gpio, 
+								PmModuleId.Hid, 
+								PmModuleId.I2c, 
+								PmModuleId.Nfc, 
+								PmModuleId.Nvservices, 
+								PmModuleId.Pcie, 
+								PmModuleId.Pinmux, 
+								PmModuleId.Psm, 
+								PmModuleId.Pwm, 
+								PmModuleId.Sasbus, 
+								PmModuleId.Spi, 
+								PmModuleId.Uart, 
+								PmModuleId.Usb, 
+								PmModuleId.GpioLow, 
+								PmModuleId.I2cPcv, 
+								PmModuleId.PcvClock, 
+								PmModuleId.PcvVoltage, 
+								PmModuleId.PsmLow, 
+								PmModuleId.WlanSockets
+							);
+							foreach(var evt in PscModuleHandles.Keys)
+								await Waiters.AddHandle(evt);
+						} else*/
+							await DumpHandleTable();
+						goto end;
+					}
+					
+					Log("Woken up to start boot2!");
+					startedBoot2 = true;
+					await StartBoot2();
 				} else if(ServiceHandles.TryGetValue(handle, out var serviceName)) {
 					Log($"Pending connection to '{serviceName}'");
 					var (rc, session) = await AcceptSession(handle);
@@ -341,7 +411,13 @@ namespace AnchorNX {
 					await Waiters.AddHandle(session);
 					iface.Handle = session;
 					Log("Added handle!");
-				} else {
+				} else if(PscModuleHandles != null && PscModuleHandles.TryGetValue(handle, out var mod)) {
+					Log($"PSC state change for 0x{handle:X} - 0x{mod:X}");
+					var state = await GetAndAcknowledgeRequest(mod);
+					Log($"State changed to 0x{state:X}");
+				} else if(TriggerHandles.TryGetValue(handle, out var func))
+					await func();
+				else {
 					var iface = SessionHandles[handle];
 					Log($"Message for session {handle:X} ({iface})");
 					uint rc;
@@ -356,6 +432,7 @@ namespace AnchorNX {
 								Log($"Session closed: 0x{handle} ({iface})");
 								SessionHandles.Remove(handle);
 								Waiters.RemoveHandle(handle);
+								await CloseHandle(handle);
 								goto done;
 							default:
 								throw new NotImplementedException($"Unhandled response for receive: 0x{rc:X}");
@@ -364,19 +441,49 @@ namespace AnchorNX {
 					done:
 					if(rc == 0) {
 						try {
-							var (_, closeHandle) = await iface.SyncMessage(IpcMemory, XBufAddr);
-							rc = await Reply(handle);
-							Log($"Reply sent: {rc:X} (closehandle {closeHandle})");
-							Debug.Assert(rc == 0xEA01);
+							await iface.SyncMessage(IpcMemory, XBufAddr, async closeHandle => {
+								rc = await Reply(handle);
+								Log($"Reply sent: {rc:X} (closehandle {closeHandle})");
+								Debug.Assert(rc == 0xEA01);
+								if(closeHandle) {
+									Log($"Closing session 0x{handle:X}");
+									iface.Close();
+									SessionHandles.Remove(handle);
+									Waiters.RemoveHandle(handle);
+									await CloseHandle(handle);
+								}
+							});
 						} catch(IpcIgnoreException) {
 							Log($"This message should be ignored; just moving on.");
 						}
 					}
 				}
 
+				end:
 				await Waiters.TriggerStart(whandle);
 				LastTime = Stopwatch.ElapsedMilliseconds;
 			}
+		}
+
+		async Task StartBoot2() {
+			Log("Getting pm:shell");
+			await IUserInterface.GetService("pm:shell", async session => {
+				Log($"Got pm:shell? {session:X}");
+				SetupNotifyBootFinished();
+				var rc = await SendRequest(session);
+				Log($"NotifyBootFinished? {rc:X}");
+				Debug.Assert(rc == 0);
+				await IUserInterface.GetService("set", async ss => {
+					Log("Completed boot2 startup!");
+					await CloseHandle(ss);
+					await CloseHandle(session);
+				});
+			});
+		}
+
+		public void RegisteredService(string name) {
+			if(name == "psc:m")
+				SendEvent();
 		}
 
 		void SetupIpcReceive() {
@@ -385,7 +492,7 @@ namespace AnchorNX {
 			ispan[0] = 0;
 			ispan[1] = 2U << 10; // HIPC_AUTO_RECV_STATIC
 			ispan[2] = (uint) RecvBufAddr;
-			ispan[3] = (uint) (RecvBufAddr >> 32) | (0x500U << 16);
+			ispan[3] = (uint) (RecvBufAddr >> 32) | (0x4000U << 16);
 		}
 
 		void DumpIpcBuffer() {
@@ -526,6 +633,141 @@ namespace AnchorNX {
 			await SendCommand();
 		}
 
+		public async Task<(uint Result, uint WriterHandle, uint ReaderHandle)> CreateEvent() {
+			this[0] = 14;
+			this[1] = 0xDEADBEEF;
+			this[2] = 0xCAFEBABE;
+			await SendCommand();
+			return ((uint) this[0], (uint) this[1], (uint) this[2]);
+		}
+
+		public async Task<uint> CloseHandle(uint handle) {
+			this[0] = 15;
+			this[1] = handle;
+			await SendCommand();
+			return (uint) this[0];
+		}
+
+		public async Task<(uint Result, ulong Pid)> GetProcessId(uint handle) {
+			this[0] = 16;
+			this[1] = handle;
+			await SendCommand();
+			return ((uint) this[0], this[1]);
+		}
+
+		public async Task<(uint Result, uint Handle)> ManageNamedPort(string name, int maxSessions) {
+			this[0] = 17;
+			this[1] = (uint) maxSessions;
+			var nameBytes = Encoding.ASCII.GetBytes(name).Concat(new byte[8]).ToArray();
+			this[2] = BitConverter.ToUInt64(nameBytes);
+			await SendCommand();
+			return ((uint) this[0], (uint) this[1]);
+		}
+		
+		public async Task<(uint Result, uint Handle)> ConnectToPort(uint handle) {
+			this[0] = 18;
+			this[1] = handle;
+			await SendCommand();
+			return ((uint) this[0], (uint) this[1]);
+		}
+
+		public enum PmModuleId : uint {
+			Usb           = 4,
+			Ethernet      = 5,
+			Fgm           = 6,
+			PcvClock      = 7,
+			PcvVoltage    = 8,
+			Gpio          = 9,
+			Pinmux        = 10,
+			Uart          = 11,
+			I2c           = 12,
+			I2cPcv        = 13,
+			Spi           = 14,
+			Pwm           = 15,
+			Psm           = 16,
+			Tc            = 17,
+			Omm           = 18,
+			Pcie          = 19,
+			Lbl           = 20,
+			Display       = 21,
+			Hid           = 24,
+			WlanSockets   = 25,
+			Fs            = 27,
+			Audio         = 28,
+			TmaHostIo     = 30,
+			Bluetooth     = 31,
+			Bpc           = 32,
+			Fan           = 33,
+			Pcm           = 34,
+			Nfc           = 35,
+			Apm           = 36,
+			Btm           = 37,
+			Nifm          = 38,
+			GpioLow       = 39,
+			Npns          = 40,
+			Lm            = 41,
+			Bcat          = 42,
+			Time          = 43,
+			Pctl          = 44,
+			Erpt          = 45,
+			Eupld         = 46,
+			Friends       = 47,
+			Bgtc          = 48,
+			Account       = 49,
+			Sasbus        = 50,
+			Ntc           = 51,
+			Idle          = 52,
+			Tcap          = 53,
+			PsmLow        = 54,
+			Ndd           = 55,
+			Olsc          = 56,
+			Ns            = 61,
+			Nvservices    = 101,
+			Spsm          = 127,
+		}
+
+		public async Task<(uint Result, ulong Mod, uint Event)>  InitPmModule(PmModuleId moduleId) {
+			this[0] = 19;
+			this[1] = (uint) moduleId;
+			await SendCommand();
+			return ((uint) this[0], this[1], (uint) this[2]);
+		}
+
+		async Task<Dictionary<uint, ulong>> RegisterPmModules(params PmModuleId[] moduleIds) {
+			var ret = new Dictionary<uint, ulong>();
+			foreach(var id in moduleIds) {
+				var (res, mod, evt) = await InitPmModule(id);
+				Log($"Registered PM module {id}? 0x{res:X} 0x{mod:X} 0x{evt:X}");
+				Debug.Assert(res == 0);
+				ret[evt] = mod;
+			}
+			return ret;
+		}
+
+		public async Task<uint> GetAndAcknowledgeRequest(ulong mod) {
+			this[0] = 20;
+			this[1] = mod;
+			await SendCommand();
+			return (uint) this[0];
+		}
+
+		public async Task<(uint Result, uint ServerPort, uint ClientPort)> CreatePort(int maxSessions, bool isLight, string name) {
+			this[0] = 21;
+			this[1] = (ulong) maxSessions;
+			this[2] = isLight ? 1UL : 0;
+			this[3] = BitConverter.ToUInt64(Encoding.ASCII.GetBytes(name).Concat(new byte[8]).ToArray());
+			await SendCommand();
+			return ((uint) this[0], (uint) this[1], (uint) this[2]);
+		}
+		
+		public async Task InitializeLr(uint handle) {
+			Log("Initializing LR in libnx");
+			this[0] = 22;
+			this[1] = handle;
+			await SendCommand();
+			Log("LR initialized!");
+		}
+		
 		void SetupNotifyBootFinished() {
 			var ipcBuf = IpcMemory.Span.As<byte, uint>();
 			ipcBuf[0] = 4;

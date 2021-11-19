@@ -1,5 +1,6 @@
 #pragma warning disable 169, 465, 1998
 using System;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using UltimateOrb;
 namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
@@ -41,6 +42,43 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		SafeMode = 0x1D, 
 		SystemProperEncryption = 0x1E, 
 		User = 0x1F, 
+	}
+
+	public enum SaveDataRank : byte {
+		Primary = 0,
+		Secondary = 1
+	}
+	
+	public enum SaveDataType : byte {
+		System = 0,
+		Account = 1,
+		Bcat = 2,
+		Device = 3,
+		Temporary = 4,
+		Cache = 5,
+		SystemBcat = 6
+	}
+	
+	[StructLayout(LayoutKind.Explicit, Size = 0x48)]
+	public unsafe struct SaveDataFilter {
+		[FieldOffset(0x00)] public bool FilterByProgramId;
+		[FieldOffset(0x01)] public bool FilterBySaveDataType;
+		[FieldOffset(0x02)] public bool FilterByUserId;
+		[FieldOffset(0x03)] public bool FilterBySaveDataId;
+		[FieldOffset(0x04)] public bool FilterByIndex;
+		[FieldOffset(0x05)] public SaveDataRank Rank;
+
+		[FieldOffset(0x08)] public SaveDataAttribute Attribute;
+	}
+
+	[StructLayout(LayoutKind.Explicit, Size = 0x40)]
+	public unsafe struct SaveDataAttribute {
+		[FieldOffset(0x00)] public ulong ProgramId;
+		[FieldOffset(0x08)] public fixed ulong UserId[2];
+		[FieldOffset(0x18)] public ulong StaticSaveDataId;
+		[FieldOffset(0x20)] public SaveDataType Type;
+		[FieldOffset(0x21)] public SaveDataRank Rank;
+		[FieldOffset(0x22)] public ushort Index;
 	}
 	
 	public unsafe partial class IFileSystemProxy : _Base_IFileSystemProxy {}
@@ -251,6 +289,12 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 					om.Initialize(0, 0, 0);
 					break;
 				}
+				case 67: { // FindSaveDataWithFilter
+					var ret = FindSaveDataWithFilter(im.GetData<ulong>(8), im.GetData<SaveDataFilter>(16), im.GetBuffer<byte>(0, 0));
+					om.Initialize(0, 0, 8);
+					om.SetData(8, ret);
+					break;
+				}
 				case 80: { // OpenSaveDataMetaFile
 					var ret = OpenSaveDataMetaFile(im.GetData<byte>(8), im.GetData<uint>(12), im.GetBytes(16, 0x40));
 					om.Initialize(1, 0, 0);
@@ -325,6 +369,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 				case 510: { // OpenSystemDataUpdateEventNotifier
 					var ret = OpenSystemDataUpdateEventNotifier(null);
 					om.Initialize(0, 0, 0);
+					om.Move(0, await CreateHandle(ret));
 					break;
 				}
 				case 511: { // NotifySystemDataUpdateEvent
@@ -576,6 +621,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		public virtual object OpenSaveDataInternalStorageFileSystem(object _0) => throw new NotImplementedException();
 		public virtual object UpdateSaveDataMacForDebug(object _0) => throw new NotImplementedException();
 		public virtual object WriteSaveDataFileSystemExtraData2(object _0) => throw new NotImplementedException();
+		public virtual int FindSaveDataWithFilter(ulong _0, SaveDataFilter filter, Buffer<byte> data) => throw new NotImplementedException();
 		public virtual Nn.Fssrv.Sf.IFile OpenSaveDataMetaFile(byte _0, uint _1, byte[] _2) => throw new NotImplementedException();
 		public virtual Nn.Fssrv.Sf.ISaveDataTransferManager OpenSaveDataTransferManager() => throw new NotImplementedException();
 		public virtual object OpenSaveDataTransferManagerVersion2(object _0) => throw new NotImplementedException();
@@ -588,7 +634,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		public virtual Nn.Fssrv.Sf.IDeviceOperator OpenDeviceOperator() => throw new NotImplementedException();
 		public virtual Nn.Fssrv.Sf.IEventNotifier OpenSdCardDetectionEventNotifier() => throw new NotImplementedException();
 		public virtual Nn.Fssrv.Sf.IEventNotifier OpenGameCardDetectionEventNotifier() => throw new NotImplementedException();
-		public virtual object OpenSystemDataUpdateEventNotifier(object _0) => throw new NotImplementedException();
+		public virtual Nn.Fssrv.Sf.IEventNotifier OpenSystemDataUpdateEventNotifier(object _0) => throw new NotImplementedException();
 		public virtual object NotifySystemDataUpdateEvent(object _0) => throw new NotImplementedException();
 		public virtual void SetCurrentPosixTime(ulong time) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.SetCurrentPosixTime [600]".Debug(Log);
 		public virtual ulong QuerySaveDataTotalSize(ulong _0, ulong _1) => throw new NotImplementedException();

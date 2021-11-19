@@ -40,7 +40,12 @@ namespace AnchorNX {
 		public void MainLoop() {
 			Log("Starting main loop?");
 			while(true) {
-				SDL_WaitEvent(out var evt);
+				if(SDL_PollEvent(out var evt) == 0) {
+					
+				}
+				
+				if(Box.Gpu.Window.ConsumeFrameAvailable())
+					Box.Gpu.Window.Present(() => { });
 				//Log($"Got SDL event? {evt.type}");
 			}
 		}

@@ -9,9 +9,10 @@ namespace AnchorNX.IpcServices.Nn.Cec {
 		new static Action<string> Log = Logger.Log;
 		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
-				case 0: { // Unknown0
-					Unknown0(out var _0, out var _1);
+				case 0: { // RegisterCallback
+					RegisterCallback(out var _0, out var _1);
 					om.Initialize(0, 1, 0);
+					om.SetData(8, _0);
 					om.Copy(0, await CreateHandle(_1, copy: true));
 					break;
 				}
@@ -45,17 +46,24 @@ namespace AnchorNX.IpcServices.Nn.Cec {
 					om.Initialize(0, 0, 0);
 					break;
 				}
+				case 100: { // GetHdcpServiceObject
+					var ret = GetHdcpServiceObject();
+					om.Initialize(1, 0, 0);
+					om.Move(0, await CreateHandle(ret));
+					break;
+				}
 				default:
 					throw new NotImplementedException($"Unhandled command ID to ICecManager: {im.CommandId}");
 			}
 		}
 		
-		public virtual void Unknown0(out object _0, out uint _1) => throw new NotImplementedException();
+		public virtual void RegisterCallback(out ulong _0, out uint _1) => throw new NotImplementedException();
 		public virtual object Unknown1(object _0) => throw new NotImplementedException();
 		public virtual void Unknown2(object _0) => "Stub hit for Nn.Cec.ICecManager.Unknown2 [2]".Debug(Log);
 		public virtual object Unknown3(object _0) => throw new NotImplementedException();
 		public virtual object Unknown4(object _0) => throw new NotImplementedException();
 		public virtual object Unknown5() => throw new NotImplementedException();
 		public virtual object Unknown6() => throw new NotImplementedException();
+		public virtual IHdcpController GetHdcpServiceObject() => throw new NotImplementedException();
 	}
 }

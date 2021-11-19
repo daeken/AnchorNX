@@ -4,14 +4,14 @@ using Ryujinx.Memory;
 
 namespace AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostChannel {
 	class NvHostGpuDeviceFile : NvHostChannelDeviceFile {
-		/*readonly KEvent _errorNotifierEvent;
-		readonly KEvent _smExceptionBptIntReportEvent;
-		readonly KEvent _smExceptionBptPauseReportEvent;*/
+		readonly HosEvent _errorNotifierEvent;
+		readonly HosEvent _smExceptionBptIntReportEvent;
+		readonly HosEvent _smExceptionBptPauseReportEvent;
 
 		public NvHostGpuDeviceFile(IVirtualMemoryManager memory, long owner) : base(memory, owner) {
-			/*_smExceptionBptIntReportEvent = new KEvent(context.Device.System.KernelContext);
-			_smExceptionBptPauseReportEvent = new KEvent(context.Device.System.KernelContext);
-			_errorNotifierEvent = new KEvent(context.Device.System.KernelContext);*/
+			_smExceptionBptIntReportEvent = Box.EventManager.GetEvent();
+			_smExceptionBptPauseReportEvent = Box.EventManager.GetEvent();
+			_errorNotifierEvent = Box.EventManager.GetEvent();
 		}
 
 		public override NvInternalResult Ioctl2(NvIoctl command, Span<byte> arguments, Span<byte> inlineInBuffer) {
@@ -28,31 +28,22 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostChannel {
 			return result;
 		}
 
-		public override NvInternalResult QueryEvent(out int eventHandle, uint eventId) {
+		public override NvInternalResult QueryEvent(out HosEvent eventHandle, uint eventId) {
 			// TODO: accurately represent and implement those events.
-			/*KEvent targetEvent = null;
-
 			switch(eventId) {
 				case 0x1:
-					targetEvent = _smExceptionBptIntReportEvent;
+					eventHandle = _smExceptionBptIntReportEvent;
 					break;
 				case 0x2:
-					targetEvent = _smExceptionBptPauseReportEvent;
+					eventHandle = _smExceptionBptPauseReportEvent;
 					break;
 				case 0x3:
-					targetEvent = _errorNotifierEvent;
+					eventHandle = _errorNotifierEvent;
 					break;
+				default:
+					eventHandle = null;
+					return NvInternalResult.InvalidInput;
 			}
-
-			if(targetEvent != null) {
-				if(Context.Process.HandleTable.GenerateHandle(targetEvent.ReadableEvent, out eventHandle) !=
-				   KernelResult.Success) throw new InvalidOperationException("Out of handles!");
-			} else {
-				eventHandle = 0;
-
-				return NvInternalResult.InvalidInput;
-			}*/
-			throw new NotImplementedException();
 
 			return NvInternalResult.Success;
 		}

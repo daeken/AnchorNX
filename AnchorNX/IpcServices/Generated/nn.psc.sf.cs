@@ -9,8 +9,8 @@ namespace AnchorNX.IpcServices.Nn.Psc.Sf {
 		new static Action<string> Log = Logger.Log;
 		public override async Task _Dispatch(IncomingMessage im, OutgoingMessage om) {
 			switch(im.CommandId) {
-				case 0: { // Unknown0
-					var ret = Unknown0();
+				case 0: { // Initialize
+					var ret = Initialize();
 					om.Initialize(0, 1, 0);
 					om.Copy(0, await CreateHandle(ret, copy: true));
 					break;
@@ -50,7 +50,7 @@ namespace AnchorNX.IpcServices.Nn.Psc.Sf {
 			}
 		}
 		
-		public virtual uint Unknown0() => throw new NotImplementedException();
+		public virtual uint Initialize() => throw new NotImplementedException();
 		public virtual void Unknown1(object _0) => "Stub hit for Nn.Psc.Sf.IPmControl.Unknown1 [1]".Debug(Log);
 		public virtual void Unknown2() => "Stub hit for Nn.Psc.Sf.IPmControl.Unknown2 [2]".Debug(Log);
 		public virtual object Unknown3() => throw new NotImplementedException();

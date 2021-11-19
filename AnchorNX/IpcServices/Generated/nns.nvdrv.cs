@@ -60,9 +60,7 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv {
 					break;
 				}
 				case 1: { // Ioctl
-					Ioctl(im.GetData<uint>(8), im.GetData<uint>(12), im.GetBuffer<byte>(0x21, 0), out var _0, im.GetBuffer<byte>(0x22, 0));
-					om.Initialize(0, 0, 4);
-					om.SetData(8, _0);
+					Ioctl(im, om);
 					break;
 				}
 				case 2: { // _Close
@@ -72,7 +70,7 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv {
 					break;
 				}
 				case 3: { // Initialize
-					var ret = Initialize(im.GetData<uint>(8), im.GetCopy(0), im.GetCopy(1));
+					var ret = await Initialize(im.GetData<uint>(8), im.GetCopy(0), im.GetCopy(1));
 					om.Initialize(0, 0, 4);
 					om.SetData(8, ret);
 					break;
@@ -141,9 +139,9 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv {
 		}
 		
 		public virtual void Open(Buffer<byte> path, out uint fd, out uint error_code) => throw new NotImplementedException();
-		public virtual void Ioctl(uint fd, uint rq_id, Buffer<byte> _2, out uint error_code, Buffer<byte> _4) => throw new NotImplementedException();
+		public virtual void Ioctl(IncomingMessage im, OutgoingMessage om) => throw new NotImplementedException();
 		public virtual uint _Close(uint fd) => throw new NotImplementedException();
-		public virtual uint Initialize(uint transfer_memory_size, uint current_process, uint transfer_memory) => throw new NotImplementedException();
+		public virtual async Task<uint> Initialize(uint transfer_memory_size, uint current_process, uint transfer_memory) => throw new NotImplementedException();
 		public virtual void QueryEvent(uint fd, uint event_id, out uint _2, out uint _3) => throw new NotImplementedException();
 		public virtual uint MapSharedMem(uint fd, uint nvmap_handle, uint _2) => throw new NotImplementedException();
 		public virtual object GetStatus() => throw new NotImplementedException();

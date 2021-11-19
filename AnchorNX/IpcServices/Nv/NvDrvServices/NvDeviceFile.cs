@@ -16,8 +16,8 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices {
 
 		public NvDeviceFile(long owner) => Owner = owner;
 
-		public virtual NvInternalResult QueryEvent(out int eventHandle, uint eventId) {
-			eventHandle = 0;
+		public virtual NvInternalResult QueryEvent(out HosEvent eventHandle, uint eventId) {
+			eventHandle = null;
 
 			return NvInternalResult.NotImplemented;
 		}

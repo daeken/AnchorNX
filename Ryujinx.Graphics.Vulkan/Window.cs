@@ -3,6 +3,7 @@ using Silk.NET.Vulkan;
 using System;
 using System.Linq;
 using VkFormat = Silk.NET.Vulkan.Format;
+using Semaphore = Silk.NET.Vulkan.Semaphore;
 
 namespace Ryujinx.Graphics.Vulkan
 {

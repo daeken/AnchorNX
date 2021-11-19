@@ -52,9 +52,8 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostChannel {
 
 			ChannelSyncpoints = new uint[MaxModuleSyncpoint];
 
-			// TODO!
-			//_channelSyncpoint.Id = _device.System.HostSyncpoint.AllocateSyncpoint(false);
-			//_channelSyncpoint.UpdateValue(_device.System.HostSyncpoint);
+			_channelSyncpoint.Id = Box.HostSyncpoint.AllocateSyncpoint(false);
+			_channelSyncpoint.UpdateValue(Box.HostSyncpoint);
 		}
 
 		public GpuChannel Channel { get; }
@@ -142,8 +141,7 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostChannel {
 					var id = syncptIncr.Id;
 
 					fences[i].Id = id;
-					// TODO!
-					//fences[i].Thresh = Context.Device.System.HostSyncpoint.IncrementSyncpointMax(id, syncptIncr.Incrs);
+					fences[i].Thresh = Box.HostSyncpoint.IncrementSyncpointMax(id, syncptIncr.Incrs);
 				}
 
 				foreach(var commandBuffer in commandBuffers) {
@@ -155,8 +153,7 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostChannel {
 				}
 			}
 
-			// TODO!
-			//fences[0].Thresh = Context.Device.System.HostSyncpoint.IncrementSyncpointMax(fences[0].Id, 1);
+			fences[0].Thresh = Box.HostSyncpoint.IncrementSyncpointMax(fences[0].Id, 1);
 
 			Span<int> tmpCmdBuff = stackalloc int[1];
 
@@ -179,7 +176,7 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostChannel {
 			if(arguments.Parameter >= MaxModuleSyncpoint) return NvInternalResult.InvalidInput;
 
 			if(ChannelResourcePolicy == ResourcePolicy.Device)
-				throw new NotImplementedException(); //arguments.Value = GetSyncpointDevice(_device.System.HostSyncpoint, arguments.Parameter, false);
+				arguments.Value = GetSyncpointDevice(Box.HostSyncpoint, arguments.Parameter, false);
 			else
 				arguments.Value = GetSyncpointChannel(arguments.Parameter, false);
 
@@ -334,7 +331,7 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostChannel {
 		}
 
 		NvInternalResult AllocGpfifoEx(ref AllocGpfifoExArguments arguments) {
-			// TODO! //_channelSyncpoint.UpdateValue(_device.System.HostSyncpoint);
+			_channelSyncpoint.UpdateValue(Box.HostSyncpoint);
 
 			arguments.Fence = _channelSyncpoint;
 
@@ -344,7 +341,7 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostChannel {
 		}
 
 		NvInternalResult AllocGpfifoEx2(ref AllocGpfifoExArguments arguments) {
-			// TODO! //_channelSyncpoint.UpdateValue(_device.System.HostSyncpoint);
+			_channelSyncpoint.UpdateValue(Box.HostSyncpoint);
 
 			arguments.Fence = _channelSyncpoint;
 
@@ -375,10 +372,9 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostChannel {
 			if(header.Flags.HasFlag(SubmitGpfifoFlags.FenceWait) &&
 			   header.Flags.HasFlag(SubmitGpfifoFlags.IncrementWithValue)) return NvInternalResult.InvalidInput;
 
-			// TODO!
-			/*if(header.Flags.HasFlag(SubmitGpfifoFlags.FenceWait) &&
-			   !_device.System.HostSyncpoint.IsSyncpointExpired(header.Fence.Id, header.Fence.Value))
-				Channel.PushHostCommandBuffer(CreateWaitCommandBuffer(header.Fence));*/
+			if(header.Flags.HasFlag(SubmitGpfifoFlags.FenceWait) &&
+			   !Box.HostSyncpoint.IsSyncpointExpired(header.Fence.Id, header.Fence.Value))
+				Channel.PushHostCommandBuffer(CreateWaitCommandBuffer(header.Fence));
 
 			Channel.PushEntries(entries);
 
@@ -390,11 +386,10 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostChannel {
 
 				if(header.Flags.HasFlag(SubmitGpfifoFlags.IncrementWithValue)) incrementCount += header.Fence.Value;
 
-				// TODO!
-				//header.Fence.Value =
-				//	_device.System.HostSyncpoint.IncrementSyncpointMaxExt(header.Fence.Id, (int) incrementCount);
+				header.Fence.Value =
+					Box.HostSyncpoint.IncrementSyncpointMaxExt(header.Fence.Id, (int) incrementCount);
 			} else
-				throw new NotImplementedException();//header.Fence.Value = _device.System.HostSyncpoint.ReadSyncpointMaxValue(header.Fence.Id);
+				header.Fence.Value = Box.HostSyncpoint.ReadSyncpointMaxValue(header.Fence.Id);
 
 			if(header.Flags.HasFlag(SubmitGpfifoFlags.FenceIncrement))
 				Channel.PushHostCommandBuffer(CreateIncrementCommandBuffer(ref header.Fence, header.Flags));
@@ -409,8 +404,7 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostChannel {
 		public uint GetSyncpointChannel(uint index, bool isClientManaged) {
 			if(ChannelSyncpoints[index] != 0) return ChannelSyncpoints[index];
 
-			// TODO!
-			//ChannelSyncpoints[index] = _device.System.HostSyncpoint.AllocateSyncpoint(isClientManaged);
+			ChannelSyncpoints[index] = Box.HostSyncpoint.AllocateSyncpoint(isClientManaged);
 
 			return ChannelSyncpoints[index];
 		}

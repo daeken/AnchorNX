@@ -1,4 +1,5 @@
 using System;
+using System.Text.RegularExpressions;
 
 namespace AnchorNX.Devices {
 	public class Uart : MmioDevice {
@@ -10,11 +11,15 @@ namespace AnchorNX.Devices {
 
 		public string Buffer = "";
 
+		readonly Regex KProcMatcher = new(@"KProcess::Run\(\) pid=([0-9]+) name=([^ ]+)");
+
 		[Mmio(0x70006000)]
 		uint ThrDlab_0_0 {
 			set {
 				var ch = (char) (value & 0xFF);
 				if(ch == '\n') {
+					if(KProcMatcher.Match(Buffer) is { Success: true } m)
+						Box.PidNames[ulong.Parse(m.Groups[1].Value)] = m.Groups[2].Value;
 					Log($"Message: '{Buffer.TrimEnd('\r')}'");
 					Buffer = "";
 				} else {

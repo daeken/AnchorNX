@@ -8,13 +8,14 @@ using System.Threading.Tasks;
 namespace AnchorNX {
 	public unsafe class IncomingMessage {
 		public readonly byte* Buffer;
-		public readonly bool IsDomainObject;
+		public readonly bool IsDomainObject, IsTipc;
 		public readonly ushort Type;
 		public readonly uint CommandId, ACount, BCount, XCount, MoveCount, CopyCount;
 		public readonly ulong Pid;
 		public readonly bool HasC, HasPid;
 		public readonly uint DomainHandle, DomainCommand;
-		readonly uint WLen, RawOffset, SfciOffset, DescOffset, CopyOffset, MoveOffset;
+		readonly uint WLen, RawOffset, DataOffset, DescOffset, CopyOffset, MoveOffset;
+		public OutgoingMessage Outgoing;
 		public IncomingMessage(Memory<byte> ipcBuf, bool isDomainObject = false) {
 			IsDomainObject = isDomainObject;
 			fixed(byte* buffer = ipcBuf.Span)
@@ -50,24 +51,29 @@ namespace AnchorNX {
 			pos += ACount * 3;
 			pos += BCount * 3;
 			RawOffset = pos * 4;
-			if((pos & 3) != 0)
-				pos += 4 - (pos & 3);
-			if(isDomainObject && Type is 4 or 6) {
-				DomainHandle = buf[pos + 1];
-				DomainCommand = buf[pos] & 0xFF;
-				pos += 4;
-			}
-			
-			Debug.Assert(Type == 2 || isDomainObject && DomainCommand == 2 || buf[pos] == 0x49434653); // SFCI
-			SfciOffset = pos * 4;
+			if(Type >= 0xF) {
+				IsTipc = true;
+				CommandId = Type == 0xF ? 0U : (uint) Type - 0x10;
+			} else {
+				if((pos & 3) != 0)
+					pos += 4 - (pos & 3);
+				if(isDomainObject && Type is 4 or 6) {
+					DomainHandle = buf[pos + 1];
+					DomainCommand = buf[pos] & 0xFF;
+					pos += 4;
+				}
 
-			CommandId = GetData<uint>(0);
+				Debug.Assert(Type == 2 || isDomainObject && DomainCommand == 2 || buf[pos] == 0x49434653); // SFCI
+				DataOffset = pos * 4 + 8;
+				
+				CommandId = GetData<uint>(0);
+			}
 		}
 
-		public T GetData<T>(uint offset) => new Span<T>(Buffer + SfciOffset + 8 + offset, Unsafe.SizeOf<T>())[0];
+		public T GetData<T>(uint offset) => new Span<T>(Buffer + DataOffset + offset, Unsafe.SizeOf<T>())[0];
 		public byte[] GetBytes(uint offset, uint size) =>
-			new Span<byte>(Buffer + SfciOffset + 8 + offset, (int) size).ToArray();
-		public Span<T> GetDataSpan<T>(uint offset) where T : unmanaged => new(Buffer + SfciOffset + 8 + offset, 1);
+			new Span<byte>(Buffer + DataOffset + offset, (int) size).ToArray();
+		public Span<T> GetDataSpan<T>(uint offset) where T : unmanaged => new(Buffer + DataOffset + offset, 1);
 
 		public static Func<IncomingMessage, object> DataGetter(Type T, uint offset) {
 			switch(Activator.CreateInstance(T)) {
@@ -88,9 +94,13 @@ namespace AnchorNX {
 		}
 
 		public static Func<IncomingMessage, object> BytesGetter(uint offset, uint size) => im =>
-			new Span<byte>(im.Buffer + im.SfciOffset + 8 + offset, (int) size).ToArray();
+			new Span<byte>(im.Buffer + im.DataOffset + offset, (int) size).ToArray();
 
-		public Buffer<T> GetBuffer<T>(uint type, int num) where T : struct {
+		public Buffer<T> GetBuffer<T>(uint type, int num) where T : unmanaged {
+			if(type == 0x22) {
+				var tbuf = GetBuffer<T>(0x6, num);
+				return tbuf.Address != 0 ? tbuf : null;
+			}
 			if((type & 0x20) != 0)
 				return GetBuffer<T>((type & ~0x20U) | 4U, num) ?? GetBuffer<T>((type & ~0x20U) | 8U, num);
 
@@ -136,7 +146,7 @@ namespace AnchorNX {
 		
 		public uint GetMove(uint offset) {
 			var buf = (uint*) Buffer;
-			return IsDomainObject ? buf[(SfciOffset >> 2) + 4 + offset] : buf[(MoveOffset >> 2) + offset];
+			return IsDomainObject ? buf[(DataOffset >> 2) + 2 + offset] : buf[(MoveOffset >> 2) + offset];
 		}
 
 		public T GetMove<T>(uint offset) where T : IpcInterface {
@@ -146,26 +156,32 @@ namespace AnchorNX {
 	}
 
 	public unsafe class OutgoingMessage {
-		readonly byte* Buffer;
-		public bool IsDomainObject;
+		readonly Memory<byte> IpcBuf;
+		byte* Buffer;
+		public bool IsDomainObject, IsTipc;
 		public uint ErrCode;
-		uint SfcoOffset, RealDataOffset, CopyCount;
+		uint SfcoOffset, DataOffset, RealDataOffset, CopyCount;
 		public readonly IncomingMessage Incoming;
 		readonly ulong[] XBaseAddrs;
 		int[] XBufSizes;
 
 		public OutgoingMessage(Memory<byte> ipcBuf, ulong[] xBaseAddrs, bool isDomainObject, IncomingMessage im) {
+			IpcBuf = ipcBuf;
 			fixed(byte* buffer = ipcBuf.Span)
 				Buffer = buffer;
 			XBaseAddrs = xBaseAddrs;
 			IsDomainObject = isDomainObject;
+			IsTipc = im.IsTipc;
 			Incoming = im;
 		}
 
 		public void Initialize(uint moveCount, uint copyCount, uint dataBytes, params int[] xSizes) {
+			fixed(byte* buffer = IpcBuf.Span)
+				Buffer = buffer;
+			Debug.Assert(!IsTipc || xSizes.Length == 0);
 			CopyCount = copyCount;
 			var buf = (uint *) Buffer;
-			for(var i = 0; i < 100; ++i)
+			for(var i = 0; i < 0x40; ++i)
 				buf[i] = 0;
 			buf[0] = ((uint) xSizes.Length & 0xF) << 16;
 			buf[1] = 0;
@@ -188,20 +204,31 @@ namespace AnchorNX {
 				pos += 2;
 			}
 
-			if((pos & 3) != 0)
-				pos += 4 - (pos & 3);
-			if(IsDomainObject) {
-				buf[pos] = moveCount;
-				pos += 4;
-			}
-			RealDataOffset = IsDomainObject ? moveCount << 2 : 0;
-			var dataWords = (RealDataOffset >> 2) + (dataBytes & 3) != 0 ? (dataBytes >> 2) + 1 : dataBytes >> 2;
+			if(IsTipc) {
+				RealDataOffset = 0;
+				var dataWords = (dataBytes & 3) != 0 ? (dataBytes >> 2) + 1 : dataBytes >> 2;
+				if(moveCount != 0 || copyCount != 0)
+					DataOffset = (3U + moveCount + copyCount) * 4;
+				else
+					DataOffset = 2U * 4;
+				buf[1] |= DataOffset / 4 + 2 + dataWords;
+			} else {
+				if((pos & 3) != 0)
+					pos += 4 - (pos & 3);
+				if(IsDomainObject) {
+					buf[pos] = moveCount;
+					pos += 4;
+				}
+				RealDataOffset = IsDomainObject ? moveCount << 2 : 0;
+				var dataWords = (RealDataOffset >> 2) + (dataBytes & 3) != 0 ? (dataBytes >> 2) + 1 : dataBytes >> 2;
 
-			buf[1] |= 4U + (IsDomainObject ? 4U : 0) + 4 + dataWords;
- 
-			SfcoOffset = pos * 4;
-			buf[pos] = 0x4f434653; // SFCO
-			//buf[pos + 1] = 1; // New version?
+				buf[1] |= 4U + (IsDomainObject ? 4U : 0) + 4 + dataWords;
+	 
+				SfcoOffset = pos * 4;
+				DataOffset = SfcoOffset + 8;
+				buf[pos] = 0x4f434653; // SFCO
+				buf[pos + 1] = 1; // New version?
+			}
 		}
 
 		public void Move(uint offset, uint handle) {
@@ -218,14 +245,14 @@ namespace AnchorNX {
 
 		public void Bake() {
 			var buf = (uint*) Buffer;
-			buf[(SfcoOffset >> 2) + 2] = ErrCode;
+			buf[DataOffset >> 2] = ErrCode;
 		}
 		
 		public void SetData<T>(uint offset, T value) => 
 			new Span<T>(Buffer + SfcoOffset + 8 + offset + (offset < 8 ? 0 : RealDataOffset), Unsafe.SizeOf<T>())[0] = value;
-		public Span<T> GetDataSpan<T>(uint offset) where T : unmanaged => new(Buffer + SfcoOffset + 8 + offset + (offset < 8 ? 0 : RealDataOffset), 1);
+		public Span<T> GetDataSpan<T>(uint offset) where T : unmanaged => new(Buffer + DataOffset + offset + (offset < 8 ? 0 : RealDataOffset), 1);
 		public void SetBytes(uint offset, byte[] data) =>
-			data.CopyTo(new Span<byte>(Buffer + SfcoOffset + 8 + offset + (offset < 8 ? 0 : RealDataOffset), data.Length));
+			data.CopyTo(new Span<byte>(Buffer + DataOffset + offset + (offset < 8 ? 0 : RealDataOffset), data.Length));
 
 		public Buffer<T> GetXBuffer<T>(int index) where T : unmanaged =>
 			new(XBaseAddrs[index], (ulong) XBufSizes[index]);
@@ -249,7 +276,7 @@ namespace AnchorNX {
 
 		public static Action<OutgoingMessage, object> BytesSetter(uint offset, uint size) => (om, v) =>
 			((byte[]) v).CopyTo(new Span<byte>(
-				om.Buffer + om.SfcoOffset + 8 + offset + (offset < 8 ? 0 : om.RealDataOffset), (int) size));
+				om.Buffer + om.DataOffset + offset + (offset < 8 ? 0 : om.RealDataOffset), (int) size));
 	}
 
 	public class IpcException : Exception {
@@ -267,7 +294,7 @@ namespace AnchorNX {
 			Name = name;
 
 		public override async Task _Dispatch(IncomingMessage incoming, OutgoingMessage outgoing) {
-			Log($"Attempted dispatch for command {incoming.CommandId} on fake '{Name}'");
+			Log($"Attempted dispatch for command {incoming.CommandId} on fake '{Name}' (ignored) from pid {Box.PidName(OwningPid)}");
 			throw new IpcIgnoreException();
 		}
 	}
@@ -278,6 +305,7 @@ namespace AnchorNX {
 		
 		public uint Handle;
 		public bool IsDomainObject;
+		public ulong OwningPid;
 		IpcInterface DomainOwner;
 		uint DomainHandleIter = 0xf001;
 		const uint ThisHandle = 0xf000;
@@ -286,23 +314,33 @@ namespace AnchorNX {
 		
 		public abstract Task _Dispatch(IncomingMessage incoming, OutgoingMessage outgoing);
 
-		async Task Dispatch(IncomingMessage incoming, OutgoingMessage outgoing) {
+		protected virtual async Task Dispatch(Memory<byte> ipcBuf, IncomingMessage incoming, OutgoingMessage outgoing, Func<bool, Task> reply) {
 			try {
+				if(incoming.IsTipc)
+					throw new NotImplementedException();
 				await _Dispatch(incoming, outgoing);
 			} catch(IpcException ie) {
+				Log($"IPC Exception: 0x{ie.Code:X}");
 				outgoing.Initialize(0, 0, 0);
 				outgoing.ErrCode = ie.Code;
 			}
+			outgoing.Bake();
+			ipcBuf.Span.Hexdump(Logger);
+			await reply(false);
 		}
 
 		public async Task<uint> CreateHandle(object obj, bool copy = false) {
 			if(DomainOwner != null) return await DomainOwner.CreateHandle(obj);
+			if(obj is uint handle) return handle;
 			Debug.Assert(!copy);
 			if(IsDomainObject) {
 				Debug.Assert(IsDomainObject);
 				DomainHandles[DomainHandleIter] = obj;
-				if(obj is IpcInterface ii)
+				if(obj is IpcInterface ii) {
 					ii.DomainOwner = this;
+					ii.OwningPid = OwningPid;
+				}
+
 				return DomainHandleIter++;
 			} else {
 				var (rc, server, client) = await Box.HvcProxy.CreateSession();
@@ -312,78 +350,96 @@ namespace AnchorNX {
 			}
 		}
 
-		public async Task<(uint Result, bool closeHandle)> SyncMessage(Memory<byte> ipcBuf, ulong xBaseAddr) {
+		public async Task SyncMessage(Memory<byte> ipcBuf, ulong xBaseAddr, Func<bool, Task> reply) {
 			ipcBuf.Span.Hexdump(Logger);
-			Log($"Is domain object? {IsDomainObject}");
 			var incoming = new IncomingMessage(ipcBuf, IsDomainObject);
 			var outgoing = new OutgoingMessage(ipcBuf, new[] { xBaseAddr, xBaseAddr + 0x1000 }, IsDomainObject, incoming);
+			incoming.Outgoing = outgoing;
 			var ret = 0xF601U;
 			var closeHandle = false;
 			var target = this;
 			if(IsDomainObject && incoming.DomainHandle != ThisHandle && incoming.Type is 4 or 6)
 				target = (IpcInterface) DomainHandles[incoming.DomainHandle];
-			Log($"Got message: domain command {incoming.DomainCommand} domain handle {incoming.DomainHandle:X} command id {incoming.CommandId} type {incoming.Type}");
-			if(!IsDomainObject || incoming.DomainCommand == 1 || incoming.Type is 2 or 5 or 7)
-				switch(incoming.Type) {
-					case 2:
-						closeHandle = true;
-						outgoing.Initialize(0, 0, 0);
-						ret = 0x25a0b;
-						break;
-					case 4:
-					case 6:
-						Log($"IPC command {incoming.CommandId} for {target}");
-						await target.Dispatch(incoming, outgoing);
-						ret = 0;
-						break;
-					case 5:
-					case 7:
-						switch(incoming.CommandId) {
-							case 0: // ConvertSessionToDomain
-								Log("Converting session to domain...");
-								outgoing.Initialize(0, 0, 4);
-								IsDomainObject = true;
-								outgoing.SetData(8, ThisHandle);
-								break;
-							case 2: // CloneCurrentObject
-							case 4: // DuplicateSessionEx
-								Log("Duplicating session");
-								var (rc, server, client) = await Box.HvcProxy.CreateSession();
-								Log($"Create Session? {rc:X} -- {server:X} {client:X}");
-								Debug.Assert(rc == 0);
-								outgoing.IsDomainObject = false;
-								outgoing.Initialize(1, 0, 0);
-								outgoing.Move(0, client);
-								await Box.HvcProxy.AddSession(server, this);
-								break;
-							case 3: // QueryPointerBufferSize
-								outgoing.Initialize(0, 0, 4);
-								outgoing.SetData(8, 0x500U);
-								break;
-							default:
-								throw new NotImplementedException($"Unknown domain command ID: {incoming.CommandId}");
-						}
-						ret = 0;
-						break;
-					default:
-						throw new NotImplementedException($"Unknown message type: {incoming.Type}");
+			Log($"Got message for pid {OwningPid}: domain command {incoming.DomainCommand} domain handle {incoming.DomainHandle:X} command id {incoming.CommandId} type {incoming.Type}");
+			if(incoming.IsTipc) {
+				if(incoming.Type == 0xF) {
+					closeHandle = true;
+					outgoing.Initialize(0, 0, 0);
+					ret = 0x25a0b;
+				} else {
+					Log($"TIPC command {incoming.CommandId} for {target}");
+					await target.Dispatch(ipcBuf, incoming, outgoing, reply);
+					return;
 				}
-			else
-				switch(incoming.DomainCommand) {
-					case 2:
-						Log($"Closing domain handle 0x{incoming.DomainHandle:X}");
-						DomainHandles.Remove(incoming.DomainHandle);
-						outgoing.Initialize(0, 0, 0);
-						outgoing.ErrCode = 0;
-						ret = 0;
-						break;
-					default:
-						throw new NotImplementedException($"Unknown domain command ID: {incoming.DomainCommand}");
-				}
+			} else {
+				if(!IsDomainObject || incoming.DomainCommand == 1 || incoming.Type is 2 or 5 or 7)
+					switch(incoming.Type) {
+						case 2:
+							closeHandle = true;
+							outgoing.Initialize(0, 0, 0);
+							ret = 0x25a0b;
+							break;
+						case 4:
+						case 6:
+							Log($"IPC command {incoming.CommandId} for {target}");
+							await target.Dispatch(ipcBuf, incoming, outgoing, reply);
+							return;
+						case 5:
+						case 7:
+							switch(incoming.CommandId) {
+								case 0: // ConvertSessionToDomain
+									Log("Converting session to domain...");
+									outgoing.Initialize(0, 0, 4);
+									IsDomainObject = true;
+									outgoing.SetData(8, ThisHandle);
+									break;
+								case 2: // CloneCurrentObject
+								case 4: // DuplicateSessionEx
+									Log("Duplicating session");
+									var (rc, server, client) = await Box.HvcProxy.CreateSession();
+									Log($"Create Session? {rc:X} -- {server:X} {client:X}");
+									Debug.Assert(rc == 0);
+									outgoing.IsDomainObject = false;
+									outgoing.Initialize(1, 0, 0);
+									outgoing.Move(0, client);
+									await Box.HvcProxy.AddSession(server, this);
+									break;
+								case 3: // QueryPointerBufferSize
+									outgoing.Initialize(0, 0, 4);
+									outgoing.SetData(8, 0x4000U);
+									break;
+								default:
+									throw new NotImplementedException(
+										$"Unknown domain command ID: {incoming.CommandId}");
+							}
+
+							ret = 0;
+							break;
+						default:
+							throw new NotImplementedException($"Unknown message type: {incoming.Type}");
+					}
+				else
+					switch(incoming.DomainCommand) {
+						case 2:
+							Log($"Closing domain handle 0x{incoming.DomainHandle:X}");
+							if(DomainHandles.TryGetValue(incoming.DomainHandle, out var obj) && obj is IpcInterface io)
+								io.Close();
+							DomainHandles.Remove(incoming.DomainHandle);
+							outgoing.Initialize(0, 0, 0);
+							outgoing.ErrCode = 0;
+							ret = 0;
+							break;
+						default:
+							throw new NotImplementedException($"Unknown domain command ID: {incoming.DomainCommand}");
+					}
+			}
+
 			if(ret == 0)
 				outgoing.Bake();
 			ipcBuf.Span.Hexdump(Logger);
-			return (ret, closeHandle);
+			await reply(closeHandle);
 		}
+		
+		public virtual void Close() { }
 	}
 }

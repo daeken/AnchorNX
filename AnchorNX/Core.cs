@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using IronVisor;
 
@@ -59,7 +60,7 @@ namespace AnchorNX {
 			Cpu.CPSR = 0b0101; // EL1
 			Cpu.PC = entryPoint;
 			Cpu.X[0] = arg;
-			Cpu.TrapDebugExceptions = false;
+			Cpu.TrapDebugExceptions = true;
 			Cpu.TrapDebugRegisterAccesses = false;
 			
 			new Thread(() => {
@@ -85,6 +86,9 @@ namespace AnchorNX {
 					Log($"Core {Id} running from {Cpu.PC:X} -- Irq: {Cpu.IrqPending}");
 
 					var exit = Cpu.Run();
+					var pid = (int) (uint) (Cpu[SysReg.CONTEXTIDR_EL1] & 0xFFFFFFFFU);
+					if(pid != 0 && pid != -1)
+						Box.PagetableForProcess[pid] = Cpu[SysReg.TTBR0_EL1];
 					Log($"Core {CurrentId} Exited from {Cpu.PC:X} -- Context {Cpu[SysReg.CONTEXTIDR_EL1]:X}");
 
 					if(Terminated) return;
@@ -184,6 +188,30 @@ namespace AnchorNX {
 											if(!write)
 												Cpu.X[rt] = 0;
 											break;
+										case (0b10, 0b010, 0b000, 0b000, 0b010): // MDSCR_EL1
+										case (0b10, 0b101, 0b000, 0b000, 0b000): // DBGBCR0_EL1
+										case (0b10, 0b101, 0b000, 0b000, 0b001): // DBGBCR1_EL1
+										case (0b10, 0b101, 0b000, 0b000, 0b010): // DBGBCR2_EL1
+										case (0b10, 0b101, 0b000, 0b000, 0b011): // DBGBCR3_EL1
+										case (0b10, 0b101, 0b000, 0b000, 0b100): // DBGBCR4_EL1
+										case (0b10, 0b101, 0b000, 0b000, 0b101): // DBGBCR5_EL1
+										case (0b10, 0b100, 0b000, 0b000, 0b000): // DBGBVR0_EL1
+										case (0b10, 0b100, 0b000, 0b000, 0b001): // DBGBVR1_EL1
+										case (0b10, 0b100, 0b000, 0b000, 0b010): // DBGBVR2_EL1
+										case (0b10, 0b100, 0b000, 0b000, 0b011): // DBGBVR3_EL1
+										case (0b10, 0b100, 0b000, 0b000, 0b100): // DBGBVR4_EL1
+										case (0b10, 0b100, 0b000, 0b000, 0b101): // DBGBVR5_EL1
+										case (0b10, 0b111, 0b000, 0b000, 0b000): // DBGWCR0_EL1
+										case (0b10, 0b111, 0b000, 0b000, 0b001): // DBGWCR1_EL1
+										case (0b10, 0b111, 0b000, 0b000, 0b010): // DBGWCR2_EL1
+										case (0b10, 0b111, 0b000, 0b000, 0b011): // DBGWCR3_EL1
+										case (0b10, 0b110, 0b000, 0b000, 0b000): // DBGWVR0_EL1
+										case (0b10, 0b110, 0b000, 0b000, 0b001): // DBGWVR1_EL1
+										case (0b10, 0b110, 0b000, 0b000, 0b010): // DBGWVR2_EL1
+										case (0b10, 0b110, 0b000, 0b000, 0b011): // DBGWVR3_EL1
+											if(!write)
+												Cpu.X[rt] = 0;
+											break;
 										default:
 											var mspan = VirtMem.GetSpan<byte>(Cpu.PC, Cpu);
 											Log($"MSR/MRS: {op0} {op2} {op1} {crn} {crm}");
@@ -232,6 +260,17 @@ namespace AnchorNX {
 										throw new Exception(
 											$"Data abort accessing 0x{far:X} (physical address: 0x{pfar:X})");
 									}
+								case ExceptionCode.BrkInsn:
+									var num = (uint) (esr & 0xFFFF);
+									Log($"Break instruction with 0x{num:X}!");
+									var rsn = num == 0x69 ? "Registering service" : "Getting service";
+									var name = Encoding.ASCII.GetString(BitConverter.GetBytes(Cpu.X[2])).TrimEnd('\0');
+									Log($"[SM] {rsn} '{name}'");
+									if(num == 0x69)
+										Box.HvcProxy.RegisteredService(name);
+									Cpu.X[20] = Cpu.X[2];
+									Cpu.PC += 4;
+									break;
 								default:
 									throw new NotImplementedException(
 										$"Unimplemented exception code: {ec} 0b{Convert.ToString((uint) ec, 2)} -- 0x{Cpu.PC:X}");
@@ -262,6 +301,7 @@ namespace AnchorNX {
 					}
 					Console.WriteLine();
 				});
+				Environment.Exit(0);
 			}
 		}
 

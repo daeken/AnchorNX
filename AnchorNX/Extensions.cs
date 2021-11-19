@@ -7,7 +7,7 @@ namespace AnchorNX {
 		public static bool HasBit(this uint v, int bit) => (v & (1U << bit)) != 0;
 		
 		const string Printable = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-[]{}`~!@#$%^&*()-=\\|;:'\",./<>?";
-		public static void Hexdump(this Span<byte> _buffer, Logger logger) {
+		public static void Hexdump(this ReadOnlySpan<byte> _buffer, Logger logger) {
 			var buffer = _buffer.ToArray();
 			logger.WithLock(() => {
 				for(var i = 0; i < buffer.Length; i += 16) {
@@ -27,6 +27,12 @@ namespace AnchorNX {
 				Console.WriteLine($"{buffer.Length:X4}");
 			});
 		}
+
+		public static void Hexdump(this Span<byte> _buffer, Logger logger) =>
+			((ReadOnlySpan<byte>) _buffer).Hexdump(logger);
+
+		public static void Hexdump(this byte[] _buffer, Logger logger) =>
+			((ReadOnlySpan<byte>) _buffer).Hexdump(logger);
 
 		public static Span<U> As<T, U>(this Span<T> span) where T : struct where U : struct =>
 			MemoryMarshal.Cast<T, U>(span);

@@ -321,6 +321,12 @@ namespace AnchorNX.IpcServices.Nn.Visrv.Sf {
 					om.Copy(0, await CreateHandle(ret, copy: true));
 					break;
 				}
+				case 2303: { // GetDisplayModeChangedEvent
+					var ret = GetDisplayModeChangedEvent(im.GetData<ulong>(8));
+					om.Initialize(0, 1, 0);
+					om.Copy(0, await CreateHandle(ret, copy: true));
+					break;
+				}
 				case 2402: { // GetDisplayHotplugState
 					var ret = GetDisplayHotplugState(im.GetData<ulong>(8));
 					om.Initialize(0, 0, 4);
@@ -375,8 +381,9 @@ namespace AnchorNX.IpcServices.Nn.Visrv.Sf {
 					break;
 				}
 				case 6003: { // SetLayerConfig
-					var ret = SetLayerConfig(null);
+					var ret = SetLayerConfig(im.GetData<ulong>(8));
 					om.Initialize(0, 0, 0);
+					om.SetData(8, ret);
 					break;
 				}
 				case 6004: { // AttachLayerPresentationTracer
@@ -612,6 +619,7 @@ namespace AnchorNX.IpcServices.Nn.Visrv.Sf {
 		public virtual uint AcquireLayerTexturePresentingEvent(ulong _0) => throw new NotImplementedException();
 		public virtual void ReleaseLayerTexturePresentingEvent(ulong _0) => "Stub hit for Nn.Visrv.Sf.IManagerDisplayService.ReleaseLayerTexturePresentingEvent [2301]".Debug(Log);
 		public virtual uint GetDisplayHotplugEvent(ulong _0) => throw new NotImplementedException();
+		public virtual uint GetDisplayModeChangedEvent(ulong _0) => throw new NotImplementedException();
 		public virtual uint GetDisplayHotplugState(ulong _0) => throw new NotImplementedException();
 		public virtual void GetCompositorErrorInfo(ulong _0, ulong _1, out uint _2, Buffer<byte> _3) => throw new NotImplementedException();
 		public virtual uint GetDisplayErrorEvent(ulong _0) => throw new NotImplementedException();
@@ -622,7 +630,7 @@ namespace AnchorNX.IpcServices.Nn.Visrv.Sf {
 		public virtual void AddToLayerStack(uint _0, ulong _1) => "Stub hit for Nn.Visrv.Sf.IManagerDisplayService.AddToLayerStack [6000]".Debug(Log);
 		public virtual void RemoveFromLayerStack(uint _0, ulong _1) => "Stub hit for Nn.Visrv.Sf.IManagerDisplayService.RemoveFromLayerStack [6001]".Debug(Log);
 		public virtual void SetLayerVisibility(byte _0, ulong _1) => "Stub hit for Nn.Visrv.Sf.IManagerDisplayService.SetLayerVisibility [6002]".Debug(Log);
-		public virtual object SetLayerConfig(object _0) => throw new NotImplementedException();
+		public virtual ulong SetLayerConfig(ulong _0) => throw new NotImplementedException();
 		public virtual object AttachLayerPresentationTracer(object _0) => throw new NotImplementedException();
 		public virtual object DetachLayerPresentationTracer(object _0) => throw new NotImplementedException();
 		public virtual object StartLayerPresentationRecording(object _0) => throw new NotImplementedException();

@@ -2,8 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
+using LibHac.Common.Keys;
+using LibHac.Crypto;
+using LibHac.Fs;
+using LibHac.FsSystem;
 
 namespace NandExtract {
 	[StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -34,11 +37,21 @@ namespace NandExtract {
 			return name;
 		}
 	}
-	
+
 	public class NandImage {
-		readonly Dictionary<string, (int KeyId, long Start, long Size)> Partitions = new();
+		static readonly Dictionary<string, int> BisKeyIds = new() {
+			["PRODINFO"] = 0, 
+			["PRODINFOF"] = 0, 
+			["SAFE"] = 1, 
+			["SYSTEM"] = 2, 
+			["USER"] = 3, 
+		};
 		
-		public NandImage(Stream fp) {
+		readonly Dictionary<string, (AesXtsKey? Key, long Start, long Size)> Partitions = new();
+		readonly Stream Fp;
+
+		public NandImage(KeySet keys, Stream fp) {
+			Fp = fp;
 			Span<GptHeader> hs = stackalloc GptHeader[1];
 			fp.Seek(0x200, SeekOrigin.Begin);
 			fp.Read(MemoryMarshal.Cast<GptHeader, byte>(hs));
@@ -54,7 +67,36 @@ namespace NandExtract {
 			fp.Read(MemoryMarshal.Cast<GptEntry, byte>(entries));
 			foreach(var entry in entries) {
 				var name = entry.GetName();
-				Console.WriteLine($"Foo? '{name}'");
+				var keyId = BisKeyIds.GetValueOrDefault(name, -1);
+				Partitions[name] = (
+					keyId == -1 ? null : keys.BisKeys[keyId], 
+					(long) entry.LbaStart * 0x200, (long) entry.LbaEnd * 0x200
+				);
+			}
+		}
+
+		public Stream GetStreamFor(string name) {
+			var (kid, start, end) = Partitions[name];
+			if(kid == null) throw new NotImplementedException();
+			var ns = new StreamStorage(Fp, true);
+			var es = new SubStorage(ns, start, end - start);
+			var xtss = new Aes128XtsStorage(es, kid.Value, 0x4000, true);
+			var cxts = new CachedStorage(xtss, 0x4000, true);
+			return new StorageStream(cxts, FileAccess.Read, true);
+		}
+
+		public byte[] ReadAll(string name) {
+			var (kid, start, end) = Partitions[name];
+			if(kid != null) {
+				var s = GetStreamFor(name);
+				var data = new byte[s.Length];
+				s.Read(data);
+				return data;
+			} else {
+				var data = new byte[end - start];
+				Fp.Position = start;
+				Fp.Read(data, 0, (int) (end - start));
+				return data;
 			}
 		}
 	}

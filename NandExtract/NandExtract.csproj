@@ -13,4 +13,12 @@
       <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
+    <ItemGroup>
+      <PackageReference Include="LibHac" Version="0.13.3" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\FAT32Lib\FAT32Lib.csproj" />
+    </ItemGroup>
+
 </Project>

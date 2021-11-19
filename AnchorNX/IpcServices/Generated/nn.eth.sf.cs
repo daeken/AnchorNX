@@ -82,7 +82,8 @@ namespace AnchorNX.IpcServices.Nn.Eth.Sf {
 				}
 				case 4: { // GetInterfaceCount
 					var ret = GetInterfaceCount();
-					om.Initialize(0, 0, 0);
+					om.Initialize(0, 0, 8);
+					om.SetData(8, ret);
 					break;
 				}
 				default:
@@ -94,6 +95,6 @@ namespace AnchorNX.IpcServices.Nn.Eth.Sf {
 		public virtual void Cancel() => "Stub hit for Nn.Eth.Sf.IEthInterfaceGroup.Cancel [1]".Debug(Log);
 		public virtual void GetResult() => "Stub hit for Nn.Eth.Sf.IEthInterfaceGroup.GetResult [2]".Debug(Log);
 		public virtual void GetInterfaceList(Buffer<byte> _0) => throw new NotImplementedException();
-		public virtual object GetInterfaceCount() => throw new NotImplementedException();
+		public virtual uint GetInterfaceCount() => throw new NotImplementedException();
 	}
 }

@@ -12,16 +12,16 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostCtrlGpu {
 		static readonly Stopwatch _pTimer = new();
 		static readonly double _ticksToNs = 1.0 / Stopwatch.Frequency * 1_000_000_000;
 
-		/*readonly KEvent _errorEvent;
-		readonly KEvent _unknownEvent;*/
+		readonly HosEvent _errorEvent;
+		readonly HosEvent _unknownEvent;
 
 		static NvHostCtrlGpuDeviceFile() {
 			_pTimer.Start();
 		}
 
 		public NvHostCtrlGpuDeviceFile(IVirtualMemoryManager memory, long owner) : base(owner) {
-			/*_errorEvent = new KEvent(context.Device.System.KernelContext);
-			_unknownEvent = new KEvent(context.Device.System.KernelContext);*/
+			_errorEvent = Box.EventManager.GetEvent();
+			_unknownEvent = Box.EventManager.GetEvent();
 		}
 
 		public override NvInternalResult Ioctl(NvIoctl command, Span<byte> arguments) {
@@ -72,30 +72,20 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostCtrlGpu {
 			return result;
 		}
 
-		public override NvInternalResult QueryEvent(out int eventHandle, uint eventId) {
-			// TODO: accurately represent and implement those events.
-			throw new NotImplementedException();
-			/*KEvent targetEvent = null;
-
+		public override NvInternalResult QueryEvent(out HosEvent eventHandle, uint eventId) {
 			switch(eventId) {
 				case 0x1:
-					targetEvent = _errorEvent;
+					eventHandle = _errorEvent;
 					break;
 				case 0x2:
-					targetEvent = _unknownEvent;
+					eventHandle = _unknownEvent;
 					break;
+				default:
+					eventHandle = null;
+					return NvInternalResult.InvalidInput;
 			}
 
-			if(targetEvent != null) {
-				if(Context.Process.HandleTable.GenerateHandle(targetEvent.ReadableEvent, out eventHandle) !=
-				   KernelResult.Success) throw new InvalidOperationException("Out of handles!");
-			} else {
-				eventHandle = 0;
-
-				return NvInternalResult.InvalidInput;
-			}
-
-			return NvInternalResult.Success;*/
+			return NvInternalResult.Success;
 		}
 
 		public override void Close() { }

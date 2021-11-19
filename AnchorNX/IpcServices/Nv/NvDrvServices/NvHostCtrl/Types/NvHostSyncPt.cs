@@ -4,7 +4,7 @@ using Ryujinx.Common.Logging;
 using Ryujinx.Graphics.Gpu.Synchronization;
 
 namespace AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostCtrl {
-	class NvHostSyncpt {
+	public class NvHostSyncpt {
 		static readonly Logger Logger = new("NvHostSyncpt");
 		static Action<string> Log = Logger.Log;
 		

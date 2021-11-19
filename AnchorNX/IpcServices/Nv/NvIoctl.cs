@@ -6,6 +6,9 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv {
 	struct NvIoctl {
 		public const int NvHostCustomMagic = 0x00;
 		public const int NvMapCustomMagic = 0x01;
+		public const int NvDispCtrlMagic = 0x02;
+		public const int NvHdcpUpMagic = 0x03;
+		public const int NvSchedCtrlMagic = 0x06;
 		public const int NvGpuAsMagic = 0x41;
 		public const int NvGpuMagic = 0x47;
 		public const int NvHostMagic = 0x48;

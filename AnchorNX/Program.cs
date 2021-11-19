@@ -6,9 +6,12 @@ using IronVisor;
 namespace AnchorNX {
 	class Program {
 		static void Main(string[] args) {
-			var packager = new Package2Packager("BCPKG2-1-Normal-Main.img");
+			var packager = new Package2Packager("switchroot/raw/BCPKG2-1-Normal-Main.bin");
 			packager.Remove("FS");
 			packager.Remove("boot");
+			packager.Remove("sm");
+			/*packager.TextReplace("sm", 0x2F5C, 0xAA0203F4, 0xD4200d20);
+			packager.TextReplace("sm", 0x36B0, 0xAA0203F4, 0xD4200d40);*/
 			packager.Add(File.ReadAllBytes("HvcProxy.kip"));
 			var package2 = packager.BuildPackage2();
 
@@ -17,6 +20,7 @@ namespace AnchorNX {
 			Box.DisabledTitles.Add(0x010000000000000A); // bus
 			Box.DisabledTitles.Add(0x010000000000001A); // pcv
 			Box.DisabledTitles.Add(0x0100000000000019); // nvservices
+			Box.DisabledTitles.Add(0x010000000000001C); // nvnflinger
 			Box.DisabledTitles.Add(0x0100000000000010); // ptm
 			Box.DisabledTitles.Add(0x0100000000000013); // hid
 			Box.DisabledTitles.Add(0x0100000000000014); // audio
@@ -24,8 +28,10 @@ namespace AnchorNX {
 			Box.DisabledTitles.Add(0x010000000000000B); // bluetooth
 			Box.DisabledTitles.Add(0x0100000000000012); // bsdsockets
 			Box.DisabledTitles.Add(0x0100000000000020); // nfc
+			Box.DisabledTitles.Add(0x0100000000000024); // ssl // TODO: Implement DecryptDeviceUniqueData
 			Box.DisabledTitles.Add(0x010000000000002A); // btm
-			
+			//Box.DisabledTitles.Add(0x010000000000002D); // vi
+
 			Box.Vm = new Vm();
 			PhysMem.Map(0x8000_0000, 0x1_0000_0000);
 			PhysMem.Map(0x5701_0000, 0xF_0000);

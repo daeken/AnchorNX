@@ -21,7 +21,8 @@ namespace AnchorNX.IpcServices.Nn.Wlan.Detail {
 				}
 				case 2: { // GetMacAddress
 					var ret = GetMacAddress();
-					om.Initialize(0, 0, 0);
+					om.Initialize(0, 0, 8);
+					om.SetData(8, ret);
 					break;
 				}
 				case 3: { // StartScan
@@ -50,7 +51,7 @@ namespace AnchorNX.IpcServices.Nn.Wlan.Detail {
 					break;
 				}
 				case 8: { // Unknown8
-					var ret = Unknown8(null);
+					var ret = GetConnectionEvent(null);
 					om.Initialize(0, 1, 0);
 					om.Copy(0, await CreateHandle(ret, copy: true));
 					break;
@@ -157,13 +158,13 @@ namespace AnchorNX.IpcServices.Nn.Wlan.Detail {
 		
 		public virtual void Unknown0() => "Stub hit for Nn.Wlan.Detail.IInfraManager.Unknown0 [0]".Debug(Log);
 		public virtual void Unknown1() => "Stub hit for Nn.Wlan.Detail.IInfraManager.Unknown1 [1]".Debug(Log);
-		public virtual object GetMacAddress() => throw new NotImplementedException();
+		public virtual ulong GetMacAddress() => throw new NotImplementedException();
 		public virtual void StartScan(Buffer<byte> _0) => "Stub hit for Nn.Wlan.Detail.IInfraManager.StartScan [3]".Debug(Log);
 		public virtual void StopScan() => "Stub hit for Nn.Wlan.Detail.IInfraManager.StopScan [4]".Debug(Log);
 		public virtual void Connect(object _0) => "Stub hit for Nn.Wlan.Detail.IInfraManager.Connect [5]".Debug(Log);
 		public virtual void CancelConnect() => "Stub hit for Nn.Wlan.Detail.IInfraManager.CancelConnect [6]".Debug(Log);
 		public virtual void Disconnect() => "Stub hit for Nn.Wlan.Detail.IInfraManager.Disconnect [7]".Debug(Log);
-		public virtual uint Unknown8(object _0) => throw new NotImplementedException();
+		public virtual uint GetConnectionEvent(object _0) => throw new NotImplementedException();
 		public virtual object Unknown9() => throw new NotImplementedException();
 		public virtual object GetState() => throw new NotImplementedException();
 		public virtual void GetScanResult(Buffer<byte> _0) => throw new NotImplementedException();

@@ -1,13 +1,18 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 using AnchorNX.IpcServices.Nns.Nvdrv.Nv;
 using AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices;
+using AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvDisp;
+using AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvDispCtrl;
+using AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHdcpUpCtrl;
 using AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostAsGpu;
 using AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostChannel;
 using AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostCtrl;
 using AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvHostCtrlGpu;
 using AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvMap;
+using AnchorNX.IpcServices.Nns.Nvdrv.NvDrvServices.NvSchedCtrl;
 using Ryujinx.Common.Logging;
 using Ryujinx.Memory;
 
@@ -25,8 +30,13 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv {
 			//{ "/dev/nvhost-msenc",    typeof(NvHostChannelDeviceFile) },
 			{ "/dev/nvhost-nvdec", typeof(NvHostChannelDeviceFile) },
 			//{ "/dev/nvhost-nvjpg",    typeof(NvHostChannelDeviceFile) },
-			{ "/dev/nvhost-vic", typeof(NvHostChannelDeviceFile) }
+			{ "/dev/nvhost-vic", typeof(NvHostChannelDeviceFile) }, 
 			//{ "/dev/nvhost-display",  typeof(NvHostChannelDeviceFile) },
+			{ "/dev/nvdisp-ctrl", typeof(NvDispCtrlDeviceFile) }, 
+			{ "/dev/nvdisp-disp0", typeof(NvDispDeviceFile) }, 
+			{ "/dev/nvdisp-disp1", typeof(NvDispDeviceFile) }, 
+			{ "/dev/nvsched-ctrl", typeof(NvSchedCtrlDeviceFile) }, 
+			{ "/dev/nvhdcp_up-ctrl", typeof(NvHdcpUpCtrlDeviceFile) }, 
 		};
 
 		public static IdDictionary DeviceFileIdRegistry = new();
@@ -49,27 +59,36 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv {
 				error_code = 0;
 			} else {
 				Log($"Cannot find file device \"{path}\"!");
+				throw new NotImplementedException($"Cannot find file device \"{path}\"!");
 				fd = 0xFFFFFFFF;
 				error_code = (uint) NvResult.FileOperationFailed;
 			}
 		}
 
-		public override void Ioctl(uint fd, uint rq_id, Buffer<byte> ibuf, out uint error_code, Buffer<byte> obuf) {
+		public override void Ioctl(IncomingMessage im, OutgoingMessage om) {
+			var (fd, rq_id) = (im.GetData<uint>(8), im.GetData<uint>(12));
+			var ibuf = im.GetBuffer<byte>(0x21, 0);
+			var obuf = im.GetBuffer<byte>(0x22, 0);
 			var ioctlCommand = new NvIoctl(rq_id);
+			if((ioctlCommand.DirectionValue & NvIoctl.Direction.Write) != 0 && obuf == null) {
+				om.Initialize(0, 0, 4, (int) ioctlCommand.Size);
+				obuf = om.GetXBuffer<byte>(0);
+			} else
+				om.Initialize(0, 0, 4);
+
 			var errorCode = GetIoctlArgument(ioctlCommand, ibuf, obuf, out var arguments);
 			if(errorCode == NvResult.Success) {
-				errorCode = GetDeviceFileFromFd(fd, out NvDeviceFile deviceFile);
+				errorCode = GetDeviceFileFromFd(fd, out var deviceFile);
 				if(errorCode == NvResult.Success) {
 					NvInternalResult internalResult = deviceFile.Ioctl(ioctlCommand, arguments);
 
 					if (internalResult == NvInternalResult.NotImplemented)
-						throw new NotImplementedException();
+						throw new NotImplementedException($"Unimplemented ioctl 0x{ioctlCommand.Number:X} (0x{rq_id:X}) for {deviceFile}");
 
 					errorCode = ConvertInternalErrorCode(internalResult);
 				}
 			}
-
-			error_code = (uint) errorCode;
+			om.SetData(8, (uint) errorCode);
 		}
 
 		static NvResult ConvertInternalErrorCode(NvInternalResult errorCode) =>
@@ -125,6 +144,8 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv {
 			var isRead  = (ioctlDirection & NvIoctl.Direction.Read)  != 0;
 			var isWrite = (ioctlDirection & NvIoctl.Direction.Write) != 0;
 
+			Log($"Ioctl size 0x{ioctlSize:X} obuf size 0x{obuf?.Length:X} ibuf size 0x{ibuf?.Size} -- {isWrite} {isRead}");
+
 			if ((isWrite && ioctlSize > obuf.Length) || (isRead && ioctlSize > ibuf.Length)) {
 				arguments = null;
 				Log("Ioctl size inconsistency found!");
@@ -138,14 +159,14 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv {
 					return NvResult.InvalidSize;
 				}
 
-				ibuf.Span.CopyTo(obuf);
+				obuf.CopyFrom(ibuf.SafeSpan);
 
-				arguments = obuf;
+				arguments = obuf.Span;
 			}
 			else if(isWrite)
-				arguments = obuf;
+				arguments = obuf.Span;
 			else
-				arguments = ibuf;
+				arguments = ibuf.Span;
 
 			return NvResult.Success;
 		}
@@ -161,13 +182,27 @@ namespace AnchorNX.IpcServices.Nns.Nvdrv {
 			return (uint) errorCode;
 		}
 
-		public override uint Initialize(uint transfer_memory_size, uint current_process, uint transfer_memory) {
-			Owner = current_process;
+		public override async Task<uint> Initialize(uint transfer_memory_size, uint current_process, uint transfer_memory) {
+			var (r, pid) = await Box.HvcProxy.GetProcessId(current_process);
+			Owner = (long) pid;
+			Log($"Initializing NV for process 0x{pid:X} -- TTBR0 0x{Box.PagetableForProcess[pid]:X}");
+			Box.Gpu.RegisterProcess((long) pid, new NvVmm(Box.PagetableForProcess[pid]));
 			return 0;
 		}
 
-		public override void QueryEvent(uint fd, uint event_id, out uint _2, out uint _3) {
-			throw new NotImplementedException();
+		public override void QueryEvent(uint fd, uint event_id, out uint error_code, out uint event_handle) {
+			var errorCode = GetDeviceFileFromFd(fd, out var deviceFile);
+			event_handle = 0;
+			if(errorCode == NvResult.Success) {
+				var internalResult = deviceFile.QueryEvent(out var evt, event_id);
+				if(internalResult == NvInternalResult.NotImplemented)
+					throw new NotImplementedException($"QueryEvent (0x{event_id:X}) not implemented on {deviceFile}");
+				errorCode = ConvertInternalErrorCode(internalResult);
+
+				if(errorCode == NvResult.Success)
+					event_handle = evt.Reader;
+			}
+			error_code = (uint) errorCode;
 		}
 
 		public override uint MapSharedMem(uint fd, uint nvmap_handle, uint _2) {

@@ -20,21 +20,21 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 				Log($"Attempting to open code file system for TID {tid:X} -- disabled!");
 				throw new IpcException(0x7D402);
 			}
-			var fn = Encoding.ASCII.GetString(content_path.Span).Split('\0', 2)[0];
+			var fn = Encoding.ASCII.GetString(content_path.SafeSpan).Split('\0', 2)[0];
 			Log($"Attempting to open code file system '{fn}' -- TID 0x{tid:X}");
 			Debug.Assert(fn.StartsWith("@SystemContent://"));
-			code_info.Span.Clear();
-			var ncaFn = $"/Volumes/NO NAME/Contents/{fn.Split('/', 2)[1]}/00";
+			var ncaSub = fn.Split('/', 2)[1];
+			var ncaFn = $"switchroot/system/Contents/{ncaSub}";
 			var nca = new Nca(Box.KeySet, new LocalStorage(ncaFn, FileAccess.Read));
 			var header = nca.Header;
-			header.Signature2.CopyTo(code_info);
+			code_info.CopyFrom(header.Signature2);
 			var hm = (Memory<byte>) HeaderField.GetValue(header);
 			Span<byte> hash = stackalloc byte[0x20];
 			Sha256.GenerateSha256Hash(hm.Span[0x200..0x400], hash);
 			hash.CopyTo(code_info.Span[0x100..]);
 			code_info[0x120] = 1;
 			code_info.Hexdump(Logger);
-			return new IFileSystem(nca.OpenFileSystem(NcaSectionType.Code, IntegrityCheckLevel.ErrorOnInvalid));
+			return new IFileSystem($"code {tid:X16} from {ncaSub}", nca.OpenFileSystem(NcaSectionType.Code, IntegrityCheckLevel.ErrorOnInvalid));
 		}
 
 		public override byte IsArchivedProgram(ulong _0) => throw new NotImplementedException();

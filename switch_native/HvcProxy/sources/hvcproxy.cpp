@@ -95,7 +95,7 @@ void waitThread(void* arg) {
 }
 
 int main(int argc, char **argv) {
-    smInitialize();
+    //smInitialize();
     log("Starting HvcProxy");
     log("Flagging HVC and waiting for wakeup");
     sharedMem[0] = (uint64_t) wakeInterruptEvent;
@@ -111,7 +111,6 @@ int main(int argc, char **argv) {
         reqBufferAddr++;
     void* reqBuffer = (void*) reqBufferAddr;
     while(true) {
-        log("Going back to sleep...");
         Result rc = svcWaitSynchronizationSingle(wakeInterruptEvent, -1);
         if(rc != 0) {
             log("Wait for interrupt failed?!");
@@ -122,7 +121,6 @@ int main(int argc, char **argv) {
             log("Clear interrupt failed?!");
             return 0;
         }
-        log("Woken up; running iteration of command loop");
         switch(sharedMem[0]) {
             case 0: { // WaitSynchronization
                 int32_t index = 0;
@@ -193,7 +191,7 @@ int main(int argc, char **argv) {
                 break;
             }
             case 9: { // OpenLocationResolver
-                lrInitialize();
+                //lrInitialize();
                 LrLocationResolver* resolver = (LrLocationResolver*) malloc(sizeof(LrLocationResolver));
                 sharedMem[0] = lrOpenLocationResolver((NcmStorageId) sharedMem[1], resolver);
                 sharedMem[1] = (uint64_t) resolver;
@@ -227,12 +225,82 @@ int main(int argc, char **argv) {
                 wakeHvc();
                 break;
             }
+            case 14: { // CreateEvent
+                Handle writer, reader;
+                sharedMem[0] = svcCreateEvent(&writer, &reader);
+                sharedMem[1] = writer;
+                sharedMem[2] = reader;
+                wakeHvc();
+                break;
+            }
+            case 15: { // CloseHandle
+                sharedMem[0] = svcCloseHandle((Handle) sharedMem[1]);
+                wakeHvc();
+                break;
+            }
+            case 16: { // GetProcessId
+                sharedMem[0] = svcGetProcessId((uint64_t*) &sharedMem[1], (Handle) sharedMem[1]);
+                wakeHvc();
+                break;
+            }
+            case 17: { // ManageNamedPort
+                Handle port;
+                sharedMem[0] = svcManageNamedPort(&port, (char*) &sharedMem[2], (int32_t) sharedMem[1]);
+                sharedMem[1] = (uint64_t) port;
+                wakeHvc();
+                break;
+            }
+            case 18: { // ConnectToPort
+                Handle outPort;
+                sharedMem[0] = svcConnectToPort(&outPort, (Handle) sharedMem[1]);
+                sharedMem[1] = (uint64_t) outPort;
+                wakeHvc();
+                break;
+            }
+            case 19: { // InitPmModule
+                PscPmModule* mod = new PscPmModule;
+                u32* deps = new u32[0];
+                Result res = pscmInitialize();
+                if(res == 0) {
+                    sharedMem[0] = pscmGetPmModule(mod, (PscPmModuleId) sharedMem[1], (const u32 *) deps, 0, true);
+                    sharedMem[1] = (uint64_t) mod;
+                    sharedMem[2] = mod->event.revent;
+                }
+                wakeHvc();
+                break;
+            }
+            case 20: { // GetAndAcknowledgeRequest
+                PscPmState state;
+                u32 flags;
+                pscPmModuleGetRequest((PscPmModule*) sharedMem[1], &state, &flags);
+                pscPmModuleAcknowledge((PscPmModule*) sharedMem[1], state);
+                sharedMem[0] = state;
+                wakeHvc();
+                break;
+            }
+            case 21: { // CreatePort
+                Handle serverPort, clientPort;
+                sharedMem[0] = svcCreatePort(&serverPort, &clientPort, (s32) sharedMem[1], sharedMem[2] != 0, (const char*) &sharedMem[3]);
+                sharedMem[1] = serverPort;
+                sharedMem[2] = clientPort;
+                wakeHvc();
+                break;
+            }
+            case 22: { // Initialize LR
+                //serviceCreate(lrGetServiceSession(), (Handle) sharedMem[1]);
+                Service* s = lrGetServiceSession();
+                s->session = (Handle) sharedMem[1];
+                s->own_handle = 1;
+                s->object_id = 0;
+                s->pointer_buffer_size = 0x500;
+                wakeHvc();
+                break;
+            }
             default: {
                 log("Unknown message! Bailing");
                 return 0;
             }
         }
-        log("End of iteration...");
     }
     return 0;
 }

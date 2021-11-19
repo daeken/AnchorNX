@@ -3,20 +3,12 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using LibHac.Fs;
 using LibHac.FsSystem;
 using LibHac.FsSystem.NcaUtils;
 using LibHac.FsSystem.Save;
 
 namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
-	public struct SaveDataAttribute {
-		public ulong ApplicationId, UserId0, UserId1, SystemSaveDataId;
-		public byte SaveDataType, SaveDataRank;
-		public ushort SaveDataIndex;
-		uint Padding;
-		public ulong Unk1, Unk2, Unk3;
-	}
-	
 	public partial class IFileSystemProxy {
 		public override IFileSystem OpenFileSystem(FileSystemType filesystem_type, Buffer<byte> _1) => throw new NotImplementedException();
 		public override void SetCurrentProcess(ulong _0, ulong _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.SetCurrentProcess [1]".Debug(Log);
@@ -28,7 +20,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		public override IStorage OpenBisStorage(Partition partitionId) {
 			Console.WriteLine($"Attempting to open BIS storage for {partitionId}");
 			return new(new LocalStorage(partitionId switch {
-				Partition.CalibrationBinary => "PRODINFO.img", 
+				Partition.CalibrationBinary => "switchroot/raw/PRODINFO.bin", 
 				_ => throw new NotImplementedException()
 			}, FileAccess.Read));
 		}
@@ -37,7 +29,17 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		public override IFileSystem OpenHostFileSystem(Buffer<byte> _0) => throw new NotImplementedException();
 		public override IFileSystem OpenSdCardFileSystem() => throw new NotImplementedException();
 		public override void FormatSdCardFileSystem() => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.FormatSdCardFileSystem [19]".Debug(Log);
-		public override void DeleteSaveDataFileSystem(ulong tid) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.DeleteSaveDataFileSystem [21]".Debug(Log);
+		public override void DeleteSaveDataFileSystem(ulong tid) {
+			Log($"Attempting to delete save data filesystem for {tid:X16}");
+			var fn = $"switchroot/system/save/{tid:X16}";
+			if(Directory.Exists(fn)) {
+				Directory.Delete(Path.Join(fn, "0"), true);
+				Directory.Delete(Path.Join(fn, "1"), true);
+				Directory.CreateDirectory(Path.Join(fn, "0"));
+				Directory.CreateDirectory(Path.Join(fn, "1"));
+			}
+		}
+
 		public override void CreateSaveDataFileSystem(byte[] save_struct, byte[] ave_create_struct, byte[] _2) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.CreateSaveDataFileSystem [22]".Debug(Log);
 		public override void CreateSaveDataFileSystemBySystemSaveDataId(byte[] _0, byte[] _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.CreateSaveDataFileSystemBySystemSaveDataId [23]".Debug(Log);
 		public override void RegisterSaveDataFileSystemAtomicDeletion(Buffer<byte> _0) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.RegisterSaveDataFileSystemAtomicDeletion [24]".Debug(Log);
@@ -53,20 +55,17 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 
 		public override IFileSystem OpenSaveDataFileSystem(byte save_data_space_id, byte[] save_struct) => throw new NotImplementedException();
 
-		public override IFileSystem OpenSaveDataFileSystemBySystemSaveDataId(byte save_data_space_id, byte[] save_struct) {
+		public unsafe override IFileSystem OpenSaveDataFileSystemBySystemSaveDataId(byte save_data_space_id, byte[] save_struct) {
 			var saveData = ((Span<byte>) save_struct).As<byte, SaveDataAttribute>()[0];
 			Log($"Save data id 0x{save_data_space_id:X}");
-			Log($"Save app id 0x{saveData.ApplicationId:X}");
-			Log($"Save user id 0x{saveData.UserId0:X} 0x{saveData.UserId1:X}");
-			Log($"Save sys id 0x{saveData.SystemSaveDataId:X}");
+			Log($"Save app id 0x{saveData.ProgramId:X}");
+			Log($"Save user id 0x{saveData.UserId[0]:X} 0x{saveData.UserId[1]:X}");
+			Log($"Save sys id 0x{saveData.StaticSaveDataId:X}");
 
 			try {
-				var sfs = new SaveDataFileSystem(Box.KeySet,
-					new LocalStorage($"/Volumes/NO NAME/save/{saveData.SystemSaveDataId:X16}", FileAccess.Read),
-					IntegrityCheckLevel.ErrorOnInvalid, true);
-				return new(sfs);
+				return new($"System save {saveData.StaticSaveDataId:X16}", new DirectorySaveDataFileSystem(new LocalFileSystem($"switchroot/system/save/{saveData.StaticSaveDataId:X16}/")));
 			} catch(Exception) {
-				Log($"Could not find save");
+				Log("Could not find save");
 				throw new IpcException(0x7D402);
 			}
 		}
@@ -74,30 +73,55 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		public override IFileSystem OpenReadOnlySaveDataFileSystem(byte save_data_space_id, byte[] save_struct) => throw new NotImplementedException();
 		public override void ReadSaveDataFileSystemExtraDataBySaveDataSpaceId(byte spaceId, ulong saveId, Buffer<byte> extraDataBuf) {
 			Log($"ReadSaveDataFileSystemExtraDataBySaveDataSpaceId for space ID 0x{spaceId:X} and save ID 0x{saveId:X}");
-			extraDataBuf.Span.Clear();
+			extraDataBuf.CopyFrom(ReadSaveExtraData(saveId));
 		}
 
 		public override void ReadSaveDataFileSystemExtraData(ulong saveId, Buffer<byte> extraDataBuf) {
 			Log($"ReadSaveDataFileSystemExtraData for 0x{saveId:X}");
-			extraDataBuf.Span.Clear();
+			extraDataBuf.CopyFrom(ReadSaveExtraData(saveId));
 		}
 
-		public override void WriteSaveDataFileSystemExtraData(byte _0, ulong _1, Buffer<byte> _2) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.WriteSaveDataFileSystemExtraData [59]".Debug(Log);
-		public override ISaveDataInfoReader OpenSaveDataInfoReader() => throw new NotImplementedException();
-		public override ISaveDataInfoReader OpenSaveDataInfoReaderBySaveDataSpaceId(byte _0) => throw new NotImplementedException();
+		Span<byte> ReadSaveExtraData(ulong saveId) {
+			var sd = new DirectorySaveDataFileSystem(new LocalFileSystem($"switchroot/system/save/{saveId:X16}/"));
+			var rc = sd.ReadExtraData(out var ed);
+			//if(rc.IsFailure()) throw new IpcException(rc.Value);
+			if(rc.IsFailure()) ed = new SaveDataExtraData();
+			return MemoryMarshal.Cast<SaveDataExtraData, byte>(new[] { ed });
+		}
+
+		void WriteSaveExtraData(ulong saveId, ReadOnlySpan<byte> data) {
+			var sd = new DirectorySaveDataFileSystem(new LocalFileSystem($"switchroot/system/save/{saveId:X16}/"));
+			var rc = sd.WriteExtraData(MemoryMarshal.Cast<byte, SaveDataExtraData>(data)[0]);
+			if(rc.IsFailure()) throw new IpcException(rc.Value);
+		}
+
+		public override void WriteSaveDataFileSystemExtraData(byte spaceId, ulong saveId, Buffer<byte> _2) =>
+			WriteSaveExtraData(saveId, _2.SafeSpan);
+		public override ISaveDataInfoReader OpenSaveDataInfoReader() => new();
+		public override ISaveDataInfoReader OpenSaveDataInfoReaderBySaveDataSpaceId(byte _0) => new();
 		public override object OpenCacheStorageList(object _0) => throw new NotImplementedException();
 		public override object OpenSaveDataInternalStorageFileSystem(object _0) => throw new NotImplementedException();
 		public override object UpdateSaveDataMacForDebug(object _0) => throw new NotImplementedException();
 		public override object WriteSaveDataFileSystemExtraData2(object _0) => throw new NotImplementedException();
+
+		public override int FindSaveDataWithFilter(ulong _0, SaveDataFilter filter, Buffer<byte> data) {
+			Log("FindSaveDataWithFilter stub");
+			return 0;
+		}
+
 		public override IFile OpenSaveDataMetaFile(byte _0, uint _1, byte[] _2) => throw new NotImplementedException();
 		public override ISaveDataTransferManager OpenSaveDataTransferManager() => throw new NotImplementedException();
 		public override object OpenSaveDataTransferManagerVersion2(object _0) => throw new NotImplementedException();
-		public override IFileSystem OpenImageDirectoryFileSystem(uint _0) => throw new NotImplementedException();
 
-		public override IFileSystem OpenContentStorageFileSystem(uint content_storage_id) => new(content_storage_id switch {
-			0 => new LocalFileSystem("/Volumes/NO NAME/Contents"), 
-			_ => throw new NotImplementedException($"Unknown content id {content_storage_id}")
-		});
+		public override IFileSystem OpenImageDirectoryFileSystem(uint _0) =>
+			new("Album", new LocalFileSystem("switchroot/user/Album"));
+
+		public override IFileSystem OpenContentStorageFileSystem(uint content_storage_id) => new("system contents", 
+			content_storage_id switch {
+				0 => new LocalFileSystem("switchroot/system/Contents"), 
+				1 => new LocalFileSystem("switchroot/user/Contents"), 
+				_ => throw new NotImplementedException($"Unknown content id {content_storage_id}")
+			});
 		
 		public override IStorage OpenDataStorageByCurrentProcess() => throw new NotImplementedException();
 		
@@ -114,7 +138,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 			}
 
 			Debug.Assert(fn.StartsWith("@SystemContent://"));
-			var ncaFn = $"/Volumes/NO NAME/Contents/{fn.Split('/', 2)[1]}/00";
+			var ncaFn = $"switchroot/system/Contents/{fn.Split('/', 2)[1]}";
 			var nca = new Nca(Box.KeySet, new LocalStorage(ncaFn, FileAccess.Read));
 			return new IStorage(nca.OpenStorage(NcaSectionType.Data, IntegrityCheckLevel.ErrorOnInvalid));
 		}
@@ -128,10 +152,10 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		}
 		
 		public override IStorage OpenPatchDataStorageByCurrentProcess() => throw new NotImplementedException();
-		public override IDeviceOperator OpenDeviceOperator() => throw new NotImplementedException();
-		public override IEventNotifier OpenSdCardDetectionEventNotifier() => throw new NotImplementedException();
-		public override IEventNotifier OpenGameCardDetectionEventNotifier() => throw new NotImplementedException();
-		public override object OpenSystemDataUpdateEventNotifier(object _0) => throw new NotImplementedException();
+		public override IDeviceOperator OpenDeviceOperator() => new();
+		public override IEventNotifier OpenSdCardDetectionEventNotifier() => new();
+		public override IEventNotifier OpenGameCardDetectionEventNotifier() => new();
+		public override IEventNotifier OpenSystemDataUpdateEventNotifier(object _0) => new();
 		public override object NotifySystemDataUpdateEvent(object _0) => throw new NotImplementedException();
 		public override void SetCurrentPosixTime(ulong time) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.SetCurrentPosixTime [600]".Debug(Log);
 		public override ulong QuerySaveDataTotalSize(ulong _0, ulong _1) => throw new NotImplementedException();
@@ -158,7 +182,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		public override object IsAccessFailureDetected(object _0) => throw new NotImplementedException();
 		public override object ResolveAccessFailure(object _0) => throw new NotImplementedException();
 		public override object AbandonAccessFailure(object _0) => throw new NotImplementedException();
-		public override void GetAndClearFileSystemProxyErrorInfo(out byte[] error_info) => throw new NotImplementedException();
+		public override void GetAndClearFileSystemProxyErrorInfo(out byte[] error_info) => error_info = Array.Empty<byte>();
 		public override void SetBisRootForHost(uint _0, Buffer<byte> _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.SetBisRootForHost [1000]".Debug(Log);
 		public override void SetSaveDataSize(ulong _0, ulong _1) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.SetSaveDataSize [1001]".Debug(Log);
 		public override void SetSaveDataRootPath(Buffer<byte> _0) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.SetSaveDataRootPath [1002]".Debug(Log);
@@ -168,7 +192,7 @@ namespace AnchorNX.IpcServices.Nn.Fssrv.Sf {
 		public override void OutputAccessLogToSdCard(Buffer<byte> log_text) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.OutputAccessLogToSdCard [1006]".Debug(Log);
 		public override void RegisterUpdatePartition() => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.RegisterUpdatePartition [1007]".Debug(Log);
 		public override IFileSystem OpenRegisteredUpdatePartition() => throw new NotImplementedException();
-		public override void GetAndClearMemoryReportInfo(out byte[] _0) => throw new NotImplementedException();
+		public override void GetAndClearMemoryReportInfo(out byte[] report_info) => report_info = Array.Empty<byte>();
 		public override object Unknown1010(object _0) => throw new NotImplementedException();
 		public override void OverrideSaveDataTransferTokenSignVerificationKey(Buffer<byte> _0) => "Stub hit for Nn.Fssrv.Sf.IFileSystemProxy.OverrideSaveDataTransferTokenSignVerificationKey [1100]".Debug(Log);
 	}
